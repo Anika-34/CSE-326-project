@@ -157,6 +157,7 @@ function PaymentPage() {
       </header>
 
       <main className="payment-layout">
+        <div class="header-shaper"></div>
         <section className="payment-main">
           <div className="payment-card">
             <div className="payment-section-header">
