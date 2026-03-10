@@ -61,6 +61,7 @@ function PaymentPage() {
   const [paymentResult, setPaymentResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [timeLeft, setTimeLeft] = useState('00:28:45');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -297,7 +298,7 @@ function PaymentPage() {
           <div className="summary-card notice-card">
             <div className="sidebar-header">
               <h3>Notice</h3>
-              <a href="#" className="sidebar-link">Show More &gt;</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); setIsModalOpen(true); }} className="sidebar-link">Show More &gt;</a>
             </div>
             <ul>
               <li>
@@ -306,6 +307,24 @@ function PaymentPage() {
               </li>
             </ul>
           </div>
+
+          {isModalOpen && (
+            <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h2>Notice</h2>
+                  <button className="modal-close" onClick={() => setIsModalOpen(false)}>✕</button>
+                </div>
+                <div className="modal-body">
+                  <ul>
+                    <li>
+                      You're about to complete a booking on Trip.com. If your booking cannot be confirmed, you'll receive a full refund. If you cancel up to 30-minute after confirmation, you'll get a full refund. If you cancel more than 30-minute after confirmation, you won't receive a refund. You'll be charged the cancellation fee if you don't check in.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
         </aside>
       </main>
     </div>
