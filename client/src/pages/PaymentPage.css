@@ -525,3 +525,50 @@
 .modal-body li {
   margin-bottom: 12px;
 }
+
+/* Footer Styles */
+.payment-footer {
+  background: #ffffff;
+  border-top: 1px solid #e0e0e0;
+  padding: 32px 0;
+  margin-top: 40px;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 28px;
+  text-align: center;
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.logo-icon {
+  font-size: 24px;
+}
+
+.logo-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #d40c5c;
+  letter-spacing: 0.5px;
+}
+
+.footer-copyright {
+  font-size: 13px;
+  color: #666;
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.footer-operator {
+  font-size: 13px;
+  color: #666;
+  margin: 8px 0 0 0;
+}

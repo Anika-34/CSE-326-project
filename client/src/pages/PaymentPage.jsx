@@ -327,6 +327,17 @@ function PaymentPage() {
           )}
         </aside>
       </main>
+
+      <footer className="payment-footer">
+        <div className="footer-content">
+          <div className="footer-logo">
+            <span className="logo-icon">🌐</span>
+            <span className="logo-text">VeriSign</span>
+          </div>
+          <p className="footer-copyright">Copyright © 2025 Trip.com Travel Singapore Pte. Ltd. All rights reserved</p>
+          <p className="footer-operator">Site Operator: Trip.com Travel Singapore Pte. Ltd.</p>
+        </div>
+      </footer>
     </div>
   );
 }
