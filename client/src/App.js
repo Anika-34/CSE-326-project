@@ -1,11 +1,13 @@
 import './App.css';
-import {Fragment} from 'react';
-import Test from './components/test';
+import { Fragment } from 'react';
+import PaymentPage from './pages/PaymentPage';
 
 function App() {
-  return <Fragment>
-    <Test />
-  </Fragment>;
+  return (
+    <Fragment>
+      <PaymentPage />
+    </Fragment>
+  );
 }
 
 export default App;
