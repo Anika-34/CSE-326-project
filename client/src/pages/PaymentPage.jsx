@@ -62,6 +62,7 @@ function PaymentPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [timeLeft, setTimeLeft] = useState('00:28:45');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -258,7 +259,7 @@ function PaymentPage() {
           <div className="summary-card">
             <div className="sidebar-header">
               <h3>Booking Info</h3>
-              <a href="#" className="sidebar-link">Details &gt;</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); setIsDetailsOpen(true); }} className="sidebar-link">Details &gt;</a>
             </div>
             <p className="hotel-name">{BOOKING.hotelName}</p>
             <div className="summary-grid">
@@ -321,6 +322,83 @@ function PaymentPage() {
                       You're about to complete a booking on Trip.com. If your booking cannot be confirmed, you'll receive a full refund. If you cancel up to 30-minute after confirmation, you'll get a full refund. If you cancel more than 30-minute after confirmation, you won't receive a refund. You'll be charged the cancellation fee if you don't check in.
                     </li>
                   </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isDetailsOpen && (
+            <div className="modal-overlay" onClick={() => setIsDetailsOpen(false)}>
+              <div className="modal-content details-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h2>Booking Details</h2>
+                  <button className="modal-close" onClick={() => setIsDetailsOpen(false)}>✕</button>
+                </div>
+                <div className="modal-body details-body">
+                  <div className="details-section">
+                    <h3>Price Details</h3>
+                    <div className="price-breakdown">
+                      <div className="price-row">
+                        <span>Room Rate</span>
+                        <span className="price">US$176.65</span>
+                      </div>
+                      <div className="price-row">
+                        <span>Taxes & fees</span>
+                        <span className="price">US$7.82</span>
+                      </div>
+                      <div className="price-row discount">
+                        <span>First Booking Deal</span>
+                        <span className="price">-US$27.68</span>
+                      </div>
+                      <div className="price-row discount">
+                        <span>Special Discount</span>
+                        <span className="price">-US$18.45</span>
+                      </div>
+                      <div className="price-row discount">
+                        <span>New user promo code</span>
+                        <span className="price">-US$10.00</span>
+                      </div>
+                      <div className="price-row prepay-row">
+                        <span>Prepay Online</span>
+                        <span className="price prepay-price">US$128.34</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="details-section">
+                    <h3>{BOOKING.hotelName}</h3>
+                    <div className="hotel-details-grid">
+                      <div>
+                        <span className="label">Room type</span>
+                        <span className="value">Collection Executive Twin Room</span>
+                      </div>
+                      <div>
+                        <span className="label">Check-in</span>
+                        <span className="value">{BOOKING.checkIn}</span>
+                      </div>
+                      <div>
+                        <span className="label">Check-out</span>
+                        <span className="value">{BOOKING.checkOut}</span>
+                      </div>
+                      <div>
+                        <span className="label">Room</span>
+                        <span className="value">{BOOKING.room}</span>
+                      </div>
+                      <div>
+                        <span className="label">Night</span>
+                        <span className="value">{BOOKING.night}</span>
+                      </div>
+                    </div>
+                    <div className="hotel-info-text">
+                      <p>Max. occupancy: 2 guests/room</p>
+                      <p>Includes breakfast for 2 guests</p>
+                    </div>
+                  </div>
+
+                  <div className="details-section">
+                    <h3>Traveler Info</h3>
+                    <p className="traveler-name">Agatsuma zenitsu</p>
+                  </div>
                 </div>
               </div>
             </div>
