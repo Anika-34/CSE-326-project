@@ -20,10 +20,8 @@ const CheckAvailability = () => {
         getAvailability(hotel_id);
     }, [hotel_id]);
 
-
     return <Fragment>
-        <h1>Check Availability</h1>
-        
+        <h1>Check Availability for Hotel ID: {hotel_id}</h1>
     </Fragment>
 }
 

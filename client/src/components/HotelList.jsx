@@ -1,12 +1,26 @@
 import React, { useEffect, useState } from 'react'
 import { Fragment } from 'react';
 import HotelCard from './HotelCard';
+import "../components/ResultSearchBar"
+import ResultSearchBar from '../components/ResultSearchBar';
+
+// TODO
+// dummy data passed for now, pore useparam diye kprte hoobe
 
 
-const HotelList = ({ location = "New York", checkInDate = "2026-02-15", checkOutDate = "2026-02-18", room, adults, children }) => {
+const HotelList = ({ location = "New York", checkInDate = "2026-02-15", checkOutDate = "2026-02-18", room = 1, adults = 0, children = 1 }) => {
     const [hotels, setHotels] = useState([]);
     const [loading, setLoading] = useState(true);
     const baseUrl = process.env.REACT_APP_API_URL || '';
+    const roomText = room + (room > 1 ? " rooms, " : " room, ") + adults + (adults === 1 ? adults + " adult, " : " adult, ") + (children > 1 ? children + " children" : children === 1 ? "1 child" : "");
+
+    const searchData = {
+        location: location,
+        checkIn: checkInDate,
+        checkOut: checkOutDate,
+        guests: roomText,
+        nights: 1
+    };
 
     const getHotels = async () => {
         try {
@@ -40,6 +54,11 @@ const HotelList = ({ location = "New York", checkInDate = "2026-02-15", checkOut
     if (loading) return <div className="loader">Searching for best deals...</div>;
 
     return <Fragment>
+        <div className="container-fluid px-4">
+            
+                <ResultSearchBar searchData={searchData} />
+            
+        
         <div className="hotel-list-container">
             {hotels.length > 0 ? (
                 hotels.map(hotel => (
@@ -48,6 +67,7 @@ const HotelList = ({ location = "New York", checkInDate = "2026-02-15", checkOut
             ) : (
                 <p>No hotels found for your destination.</p>
             )}
+        </div>
         </div>
     </Fragment>
 };

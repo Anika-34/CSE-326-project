@@ -9,8 +9,8 @@ import CheckAvailability from './components/CheckAvailability';
 
 const App = () => {
     return <div className = "container">
-        <Navbar />
         <Router>
+            <Navbar />
             <Routes>
                 <Route path="/hotels/search" element={<HotelList />} />
                 <Route path="/hotels/details/:hotel_id" element={<CheckAvailability />} />

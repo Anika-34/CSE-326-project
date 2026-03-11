@@ -130,7 +130,7 @@ CREATE TABLE room_availability (
     room_id INTEGER REFERENCES rooms(room_id),
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
-    -- is_available BOOLEAN DEFAULT TRUE
+    is_available BOOLEAN DEFAULT TRUE
 );
 
 -- dummy data --
