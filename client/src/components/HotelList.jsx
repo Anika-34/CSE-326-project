@@ -4,23 +4,38 @@ import HotelCard from './HotelCard';
 import "../components/ResultSearchBar"
 import ResultSearchBar from '../components/ResultSearchBar';
 import Navbar from './Navbar';
+import { useSearchParams } from 'react-router-dom';
 
 // TODO
 // dummy data passed for now, pore useparam diye kprte hoobe
+// query te room, adults, children egula pass kori nai
 
 
-const HotelList = ({ location = "New York", checkInDate = "2026-02-15", checkOutDate = "2026-02-18", room = 1, adults = 0, children = 1 }) => {
+const HotelList = () => {
+    const [searchParams] = useSearchParams();
+    console.log('Search params:', Object.fromEntries(searchParams.entries()));
+    const location = searchParams.get('location') || "Where are you going?";
+    const checkInDate = searchParams.get('checkIn') || 
+    new Date().toISOString().split('T')[0]
+    const checkOutDate = searchParams.get('checkOut') || new Date(Date.now() + 86400000).toISOString().split('T')[0]
+    const room = parseInt(searchParams.get('rooms')) || 1;
+    const adults = parseInt(searchParams.get('adults')) || 2;
+    const children = parseInt(searchParams.get('children')) || 0;
     const [hotels, setHotels] = useState([]);
     const [loading, setLoading] = useState(true);
     const baseUrl = process.env.REACT_APP_API_URL || '';
-    const roomText = room + (room > 1 ? " rooms, " : " room, ") + adults + (adults === 1 ? adults + " adult, " : " adult, ") + (children > 1 ? children + " children" : children === 1 ? "1 child" : "");
+    const nights = Math.ceil((new Date(checkOutDate) - new Date(checkInDate)) / (1000 * 60 * 60 * 24));
+    // const roomText = room + (room > 1 ? " rooms, " : " room, ") + adults + (adults === 1 ? adults + " adult, " : " adult, ") + (children > 1 ? children + " children" : children === 1 ? "1 child" : "");
 
     const searchData = {
         location: location,
         checkIn: checkInDate,
         checkOut: checkOutDate,
-        guests: roomText,
-        nights: 1
+        // guests: roomText,
+        nights: nights,
+        room,
+        adults,
+        children
     };
 
     const getHotels = async () => {
@@ -39,7 +54,7 @@ const HotelList = ({ location = "New York", checkInDate = "2026-02-15", checkOut
                     typeof body === 'string' ? body : body?.error || `HTTP ${response.status}`
                 );
             }
-
+            console.log('API response:', body);
             setHotels(body);
         } catch (err) {
             console.error('getHotels error:', err.message);
@@ -56,19 +71,34 @@ const HotelList = ({ location = "New York", checkInDate = "2026-02-15", checkOut
 
     return <Fragment>
         <Navbar />
-        <div className="container-fluid px-4">
-                <ResultSearchBar searchData={searchData} />
-            
-        
-        <div className="hotel-list-container">
-            {hotels.length > 0 ? (
-                hotels.map(hotel => (
-                    <HotelCard key={hotel.hotel_id} hotel={hotel} />
-                ))
-            ) : (
-                <p>No hotels found for your destination.</p>
-            )}
-        </div>
+        <div className="container-fluid px-4"
+        style={{ alignItems: 'center', gap: '20px', maxWidth: '1200px', margin: '0 auto' }}
+        >
+            <ResultSearchBar searchData={searchData} />
+
+
+            <div className="hotel-list-container"
+                >
+                {hotels.length > 0 ? (
+                    hotels.map(hotel => (
+                        <HotelCard
+                            key={hotel.hotel_id}
+                            hotel={hotel}
+                            
+                            searchDetails={{
+                                checkInDate,
+                                checkOutDate,
+                                nights,
+                                room,
+                                adults,
+                                children
+                            }}
+                        />
+                    ))
+                ) : (
+                    <p>No hotels found for your destination.</p>
+                )}
+            </div>
         </div>
     </Fragment>
 };

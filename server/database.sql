@@ -1,4 +1,5 @@
 CREATE DATABASE tripv1;
+-- \c tripv1
 
 CREATE TYPE status_type AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED', 'REFUNDED');
 CREATE TYPE user_type AS ENUM ('REGISTERED', 'GUEST', 'ADMIN');
@@ -21,6 +22,12 @@ CREATE TABLE hotels (
     image_url VARCHAR(255)
 );
 
+
+CREATE TABLE hotel_images (
+  image_id SERIAL PRIMARY KEY,
+  hotel_id INTEGER REFERENCES hotels(hotel_id),
+  image_url TEXT
+);
 
 CREATE TABLE hotel_ratings (
     rating_id SERIAL PRIMARY KEY,
@@ -49,9 +56,9 @@ CREATE TABLE amenities (
 );
 
 CREATE TABLE hotel_amenities (
-    hotel_id INTEGER REFERENCES hotels(hotel_id),
+    room_id INTEGER REFERENCES rooms(room_id) ,
     amenity_id INTEGER REFERENCES amenities(amenity_id),
-    PRIMARY KEY (hotel_id, amenity_id)
+    PRIMARY KEY (room_id, amenity_id)
 );
 
 CREATE TABLE policies (
@@ -118,7 +125,7 @@ CREATE TABLE favourites (
 
 CREATE TABLE deals (
     deal_id SERIAL PRIMARY KEY,
-    hotel_id INTEGER REFERENCES hotels(hotel_id),
+    room_id INTEGER REFERENCES rooms(room_id),
     description TEXT,
     discount_percentage DECIMAL(5, 2),
     start_date DATE,
@@ -131,6 +138,13 @@ CREATE TABLE room_availability (
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     is_available BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE surroundings (
+    surrounding_id SERIAL PRIMARY KEY,
+    hotel_id INTEGER REFERENCES hotels(hotel_id),
+    name VARCHAR(255) NOT NULL,
+    description TEXT
 );
 
 -- dummy data --
@@ -155,8 +169,11 @@ INSERT INTO amenities (name, description, is_chargeable, category) VALUES
 ('Swimming Pool', 'Olympic-sized outdoor pool', FALSE, 'Recreation'),
 ('Spa Services', 'Professional massage and wellness treatments', TRUE, 'Wellness');
 
-INSERT INTO hotel_amenities (hotel_id, amenity_id) VALUES 
-(1, 1), (1, 2);
+INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
+(1, 1), (1, 2);  -- room 1 gets WiFi and Pool
+
+INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
+(1, 'Early bird discount', 15.00, '2026-01-01', '2026-04-28');
 
 INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES 
 (1, 'Free cancellation up to 7 days before check-in', 'Full refund for cancellations 7+ days prior');
@@ -182,9 +199,6 @@ INSERT INTO favourites (user_id, hotel_id) VALUES
 INSERT INTO deals (hotel_id, description, discount_percentage, start_date, end_date) VALUES 
 (1, 'Early bird discount', 15.00, '2026-01-01', '2026-04-28');
 
-INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
-(1, '2026-02-15', '2026-02-18');
-
 -- another hotel --
 INSERT INTO hotels (name, location, description, overall_rating, image_url) VALUES 
 ('Oceanview Resort', 'New York', 'Beachfront resort with stunning ocean views', 4.2, 'https://picsum.photos/400/300');
@@ -198,15 +212,72 @@ INSERT INTO rooms (hotel_id, room_type, price_per_night, capacity) VALUES
 INSERT INTO amenities (name, description, is_chargeable, category) VALUES 
 ('Beach Access', 'Private beach access for guests', FALSE, 'Recreation');
 
-INSERT INTO hotel_amenities (hotel_id, amenity_id) VALUES 
-(2, 3);
+INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
+(2, 3);  -- room 2 gets Beach Access
 
 INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES 
 (2, 'Free cancellation up to 14 days before check-in', 'Full refund for cancellations 14+ days prior');
 
 
-INSERT INTO deals (hotel_id, description, discount_percentage, start_date, end_date) VALUES 
+INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
 (2, 'Spring break special', 20.00, '2026-03-01', '2026-03-31');
 
 INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
+(1, '2026-02-15', '2026-02-18');
+
+
+INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
 (2, '2026-02-15', '2026-02-18');
+
+INSERT INTO rooms (hotel_id, room_type, price_per_night, capacity) VALUES 
+(1, 'Standard Room', 150.00, 2);
+
+INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
+(3, 1);  -- room 3 gets WiFi
+
+INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES 
+(1, 'Free cancellation up to 7 days before check-in', 'Full refund for cancellations 7+ days prior');
+
+INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
+(3, 'Last minute deal', 10.00, '2026-02-01', '2026-02-14');
+
+INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
+(3, '2026-02-15', '2026-02-18');
+
+
+INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
+(1, 3);  
+
+INSERT INTO amenities (name, description, is_chargeable, category) VALUES 
+('Gym Access', '24/7 access to the hotel gym', FALSE, 'Fitness');
+
+INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
+(1, 4);  
+
+
+-- add new room to hotel 1
+INSERT INTO rooms (hotel_id, room_type, price_per_night, capacity) VALUES 
+(1, 'Family Suite', 300.00, 4);
+
+INSERT INTO amenities (name, description, is_chargeable, category) VALUES 
+('Kitchenette', 'Small kitchen area with basic appliances', FALSE, 'Convenience');
+
+INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
+(4, 1), (4, 2), (4, 3), (4, 4), (4, 5);  -- room 4 gets all amenities
+
+INSERT INTO surroundings (hotel_id, name, description) VALUES 
+(1, 'Central Park', 'Large public park with walking paths, lakes, and recreational areas'),
+(1, 'Times Square', 'Famous commercial intersection known for its bright lights and Broadway theaters'),
+(2, 'Santa Monica Pier', 'Iconic pier with an amusement park, aquarium, and restaurants');
+
+
+INSERT INTO reviews (user_id, hotel_id, comment, rating) VALUES 
+(2, 1, 'Great location but the service could be better.', 4),
+(3, 1, 'Decent stay for the price.', 3),
+(1, 1, 'Amazing ocean views and friendly staff!', 5);
+
+INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
+(4, '2026-02-15', '2026-02-18');
+
+-- delete --
+-- drop database tripv1;

@@ -7,7 +7,7 @@ const Test = () => {
 
     const getUsers = async () => {
         try {
-            const response = await fetch(`${apiBaseUrl}/dummy`);
+            const response = await fetch(`${apiBaseUrl}/v1/dummy`);
             const data = await response.json();
             console.log(data);
             setUsers(data);
@@ -28,6 +28,7 @@ const Test = () => {
                 <p>Email: {user.email}</p>
             </div>
         ))}
+        <button onClick={()=>window.location.href = '/hotels/search/?location=New%20York&checkIn=2026-02-15&checkOut=2026-02-18&rooms=1&adults=0&children=1'}>Go to Hotel Search</button>
     </Fragment>
 }
 
