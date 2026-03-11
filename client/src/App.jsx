@@ -6,14 +6,15 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import Navbar from './components/Navbar';
 import HotelList from './components/HotelList'; 
 import CheckAvailability from './components/CheckAvailability';
+import PaymentPage from './components/PaymentPage';  
 
 const App = () => {
-    return <div className = "container">
+    return <div className = "app-wrapper">
         <Router>
-            <Navbar />
             <Routes>
                 <Route path="/hotels/search" element={<HotelList />} />
                 <Route path="/hotels/details/:hotel_id" element={<CheckAvailability />} />
+                <Route path="/payment" element={<PaymentPage />} /> 
             </Routes>
         </Router>
     </div>;
