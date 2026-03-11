@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 const Navbar = () => {
     const navigate = useNavigate();
     const gotoHome = () => {
-        navigate('/hotels/search');
+        navigate('/');
     }
     return (
         <nav className="navbar">

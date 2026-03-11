@@ -154,7 +154,7 @@ function PaymentPage() {
   };
 
   const gotoHome = () => {
-    navigate('/hotels/search');
+    navigate('/');
   };
 
   return (

@@ -1,4 +1,4 @@
-/* BASE STYLES: This fixes the "Gray/Small" look from Image 4 */
+/* BASE STYLES */
 .search-bar-container {
   display: flex;
   align-items: center;
@@ -8,69 +8,12 @@
   padding: 4px 4px 4px 16px; 
   width: 100%;
   min-width: 0;
-  overflow: hidden;
+  /* CHANGED: Removed overflow: hidden to allow popup visibility */
+  overflow: visible; 
   margin: 20px auto;
   min-height: 56px; 
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-/* Restores the blue icon color and font weights */
-.icon-blue { color: #3264ff; }
-
-.search-section {
-  display: flex;
-  align-items: center;
-  gap: 8px; 
-  flex: 1;  /* This forces the sections to fill the bar */
-  min-width: 0; 
-  font-size: 1rem;
-  color: #2a2a2a;
-  font-weight: 600;
-}
-
-/* Shared flex values for Location, Dates, and Guests */
-.search-section.location,
-.search-section.dates,
-.search-section.guests {
-  flex: 1; 
-}
-
-.search-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis; /* Adds the "..." truncation */
-}
-
-.v-divider {
-  width: 1px;
-  height: 28px;
-  background: #e0e0e0;
-  margin: 0 15px;
-}
-
-.date-wrapper {
-  display: flex;
-  align-items: center;
-  min-width: 0; /* Allows children to shrink */
-  flex: 1;
-}
-
-.date-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis; /* This adds the "..." to EACH date */
-  flex-shrink: 1;          /* Tells both dates to shrink equally */
-  min-width: 40px;         /* Ensures they don't disappear completely */
-}
-
-.date-separator {
-  margin: 0 4px;
-  flex-shrink: 0;          /* The dash should never disappear */
-}
-
-.search-section.dates {
-  flex: 1.5;               /* Give dates more priority than location */
-  min-width: 0;
+  position: relative; /* Context for children */
 }
 
 .nights-badge {
@@ -81,6 +24,67 @@
   font-size: 0.85rem;
   font-weight: 500;
 }
+
+
+
+/* Restores the blue icon color and font weights */
+.icon-blue { color: #3264ff; }
+
+.search-section {
+  display: flex;
+  align-items: center;
+  gap: 8px; 
+  flex: 1;
+  min-width: 0; 
+  font-size: 1rem;
+  color: #2a2a2a;
+  font-weight: 600;
+}
+
+/* GUESTS WRAPPER FIX */
+.guests-wrapper {
+  position: relative; /* REQUIRED: Anchor for the guest-popup */
+  cursor: pointer;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 100%; /* Ensure it covers the bar height */
+}
+
+.guests-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+/* POPUP ENHANCEMENTS */
+.guest-popup {
+  position: absolute;
+  /* Positioning it below the bar */
+  top: calc(100% + 12px); 
+  right: 0;
+  width: 320px;
+  background: white;
+  border-radius: 8px;
+  /* Stronger shadow to pop against the background */
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  padding: 24px;
+  /* Ensure it sits on top of everything (AvailabilityBar is 1100) */
+  z-index: 2100; 
+  border: 1px solid #e0e0e0;
+}
+
+/* Vertical divider fix for the new flex structure */
+.v-divider {
+  width: 1px;
+  height: 28px;
+  background: #e0e0e0;
+  margin: 0 15px;
+  flex-shrink: 0;
+}
+
+/* ... keep your existing .search-text, .date-wrapper, .date-text, .nights-badge classes ... */
 
 /* Restore the blue "Search" button */
 .search-button {
@@ -96,6 +100,93 @@
   font-size: 1rem;
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* COUNTER UI STYLES */
+.counter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.counter-label-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.counter-main-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.counter-sub-label {
+  font-size: 13px;
+  color: #666;
+}
+
+.counter-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.control-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #0071c2;
+  background: white;
+  color: #0071c2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.control-btn:hover:not(:disabled) {
+  background: #f0f7ff;
+}
+
+.control-btn:disabled {
+  border-color: #ccc;
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.done-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #0071c2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+/* RESPONSIVE FIXES */
+@media (max-width: 850px) {
+  .search-bar-container {
+    flex-direction: column;
+    padding: 0;
+    overflow: visible; /* Ensure mobile also shows popup */
+  }
+  .guests-wrapper {
+    width: 100%;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+  }
+  .guest-popup {
+    width: 95%;
+    right: 2.5%;
+    left: 2.5%;
+    top: auto; /* Allow it to position naturally or fix to bottom */
+  }
 }
 
 /* INTERMEDIATE: Fix for the 900px "squashed" look */
@@ -114,6 +205,7 @@
     flex-direction: column;
     padding: 0;
     min-height: auto;
+    overflow: visible;
   }
   .search-section {
     width: 100%;
@@ -126,4 +218,87 @@
     margin: 8px;
     justify-content: center;
   }
+}
+
+.guests-wrapper {
+    position: relative; /* Anchor for the popup */
+    cursor: pointer;
+}
+
+.guest-popup {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 320px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    padding: 20px;
+    z-index: 2000;
+}
+
+.counter-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.counter-label-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.counter-main-label {
+    font-size: 16px;
+    font-weight: 500;
+    color: #1a1a2e;
+}
+
+.counter-sub-label {
+    font-size: 13px;
+    color: #666;
+}
+
+.counter-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.control-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid #0071c2;
+    background: white;
+    color: #0071c2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.control-btn:disabled {
+    border-color: #ccc;
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.count-display {
+    font-size: 16px;
+    min-width: 20px;
+    text-align: center;
+}
+
+.done-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #0071c2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 10px;
 }

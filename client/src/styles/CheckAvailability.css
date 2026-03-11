@@ -1,0 +1,644 @@
+.ca-page {
+    font-family: 'BlinkMacSystemFont', 'Segoe UI', sans-serif;
+    background: #f5f5f5;
+    min-height: 100vh;
+    color: #1a1a2e;
+    padding-top: 30px
+}
+
+.ca-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    gap: 16px
+}
+
+.ca-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e0e0e0;
+    border-top: 4px solid #0071c2;
+    border-radius: 50%;
+    animation: spin .8s linear infinite
+}
+
+.ca-loading-text {
+    color: #666;
+    font-size: 15px
+}
+
+.ca-topbar {
+    background: #fff
+}
+
+.ca-search-wrap {
+    align-items: center;
+    gap: 10px;
+    max-width: 1200px;
+    margin: 0 auto
+}
+
+.ca-header-section {
+    background: #fff;
+    padding: 20px 24px 0;
+    max-width: 1100px;
+    margin: 0 auto;
+    border-radius: 8px 8px 0 0
+}
+
+.ca-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px
+}
+
+.ca-star-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px
+}
+
+.ca-star {
+    color: #f5a623;
+    font-size: 16px
+}
+
+.ca-opened-badge {
+    font-size: 12px;
+    color: #666;
+    margin-left: 8px
+}
+
+.ca-hotel-name {
+    margin: 0 0 4px 0;
+    font-size: 22px;
+    font-weight: 800;
+    color: #1a1a2e
+}
+
+.ca-hotel-location {
+    margin: 0;
+    font-size: 13px;
+    color: #0071c2;
+    cursor: pointer
+}
+
+.ca-header-price-box {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px
+}
+
+.ca-header-original-price {
+    font-size: 13px;
+    color: #999;
+    text-decoration: line-through
+}
+
+.ca-header-price {
+    font-size: 28px;
+    font-weight: 800;
+    color: #1a1a2e
+}
+
+.ca-select-rooms-header-btn {
+    background: #0071c2;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 24px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer
+}
+
+.ca-pricematch {
+    margin: 0;
+    font-size: 12px;
+    color: #0071c2;
+    font-weight: 600
+}
+
+.ca-photo-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 4px;
+    height: 280px
+}
+
+.ca-main-photo {
+    grid-row: 1/3;
+    overflow: hidden;
+    border-radius: 6px 0 0 6px;
+    background: #e0e0e0
+}
+
+.ca-main-photo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover
+}
+
+.ca-photo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ddd
+}
+
+.ca-thumb-photo {
+    position: relative;
+    overflow: hidden;
+    border-radius: 2px
+}
+
+.ca-thumb-placeholder {
+    width: 100%;
+    height: 100%;
+    background: #ccc
+}
+
+.ca-see-all-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, .45);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 0 6px 6px 0
+}
+
+.ca-mid-section {
+    display: flex;
+    gap: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+    background: #fff
+}
+
+.ca-highlights-box {
+    flex: 2
+}
+
+.ca-right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px
+}
+
+.ca-section-title {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a2e
+}
+
+.ca-highlights-list {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap
+}
+
+.ca-highlight {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 70px
+}
+
+.ca-highlight-icon {
+    font-size: 24px
+}
+
+.ca-highlight-label {
+    font-size: 11px;
+    text-align: center;
+    color: #555
+}
+
+.ca-amenities-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 24px
+}
+
+.ca-amenity-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #444
+}
+
+.ca-amenity-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #0071c2;
+    flex-shrink: 0
+}
+
+.ca-free-tag {
+    color: #0071c2;
+    font-weight: 600
+}
+
+.ca-paid-tag {
+    color: #999
+}
+
+.ca-all-amenities-btn,
+.ca-show-more-btn {
+    background: none;
+    border: none;
+    color: #0071c2;
+    cursor: pointer;
+    text-decoration: underline
+}
+
+.ca-all-amenities-btn {
+    margin-top: 10px;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600
+}
+
+.ca-show-more-btn {
+    padding: 4px 0;
+    font-size: 13px
+}
+
+.ca-description-text {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.6;
+    margin: 0
+}
+
+.ca-rating-box,
+.ca-surroundings-box {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px
+}
+
+.ca-rating-score {
+    font-size: 36px;
+    font-weight: 800;
+    color: #fff;
+    background: #003580;
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 6px;
+    margin-bottom: 10px
+}
+
+.ca-rating-max {
+    font-size: 18px;
+    font-weight: 400
+}
+
+.ca-rating-desc {
+    font-size: 13px;
+    color: #444;
+    margin: 0 0 8px 0;
+    line-height: 1.5
+}
+
+.ca-review-link,
+.ca-view-map-link {
+    color: #0071c2;
+    text-decoration: none;
+    font-weight: 600
+}
+
+.ca-review-link {
+    font-size: 13px
+}
+
+.ca-reviews-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 0;
+}
+
+.ca-review-card {
+    display: flex;
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+    transition: box-shadow 0.2s;
+}
+
+.ca-review-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* Left Section: User Identity */
+.ca-review-left {
+    width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-right: 1px solid #f0f0f0;
+    margin-right: 24px;
+}
+
+.ca-reviewer-avatar {
+    width: 48px;
+    height: 48px;
+    background-color: #0071c2;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.ca-reviewer-name {
+    display: block;
+    font-weight: 700;
+    color: #1a1a1a;
+    font-size: 15px;
+}
+
+.ca-review-date {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+}
+
+/* Right Section: Rating & Comment */
+.ca-review-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ca-review-rating-badge {
+    background-color: #003580;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px 6px 6px 0;
+    width: fit-content;
+}
+
+.ca-rating-number {
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.ca-rating-out-of {
+    font-size: 11px;
+    opacity: 0.8;
+    margin-left: 4px;
+}
+
+.ca-review-comment {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #333;
+    font-style: italic;
+    margin: 0;
+}
+
+.ca-review-tag {
+    font-size: 12px;
+    color: #008009;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+.ca-surroundings-title {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a2e
+}
+
+.ca-surround-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 4px 0;
+    border-bottom: 1px solid #f5f5f5;
+    color: #555
+}
+
+.ca-surround-dist {
+    color: #888
+}
+
+.ca-view-map-link {
+    display: block;
+    margin-top: 8px;
+    font-size: 12px
+}
+
+.ca-deals-banner {
+    max-width: 1100px;
+    margin: 0 auto 8px;
+    background: #fff9e6;
+    border: 1px solid #f5a623;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap
+}
+
+.ca-deal-chip {
+    background: #e8192c;
+    color: #fff;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 12px;
+    font-weight: 700
+}
+
+.ca-rooms-section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px 24px;
+    background: #fff
+}
+
+.ca-filter-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px
+}
+
+.ca-filter-chip {
+    border: 1px solid #d0d0d0;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    background: #fff;
+    cursor: pointer;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all .15s
+}
+
+.ca-filter-chip.active {
+    background: #e8f0fe;
+    border-color: #0071c2;
+    color: #0071c2;
+    font-weight: 600
+}
+
+.ca-chip-icon {
+    color: #0071c2
+}
+
+.ca-no-rooms {
+    color: #888;
+    font-size: 14px;
+    text-align: center;
+    padding: 40px 0
+}
+
+.ca-tab-content {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+    background: #fff
+}
+
+.ca-tab-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: #1a1a2e
+}
+
+.ca-tab-placeholder {
+    color: #888;
+    font-size: 14px
+}
+
+.ca-policy-row {
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: #444;
+    line-height: 1.6
+}
+
+.ca-policies-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 24px;
+}
+
+.ca-policy-card {
+    background: #ffffff;
+    border: 1px solid #e6e6e6;
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: transform 0.2s ease;
+}
+
+.ca-policy-card:hover {
+    border-color: #0071c2;
+}
+
+.ca-full-width {
+    grid-column: 1 / -1;
+}
+
+.ca-policy-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ca-policy-icon {
+    font-size: 24px;
+}
+
+.ca-policy-header h4 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.ca-policy-text {
+    font-size: 15px;
+    line-height: 1.5;
+    color: #4a4a4a;
+    margin: 0;
+}
+
+.ca-policy-text.small {
+    font-size: 13px;
+    color: #6a6a6a;
+}
+
+.ca-policy-badge {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.ca-policy-badge.free {
+    background: #e7f4e8;
+    color: #008009;
+}
+
+.ca-time-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed #eee;
+    font-size: 14px;
+}
+
+.ca-time-row:last-child {
+    border-bottom: none;
+}
+
+.ca-mt-24 { margin-top: 24px; }
+.ca-hotel-emoji { font-size: 48px; }
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg)
+    }
+}
