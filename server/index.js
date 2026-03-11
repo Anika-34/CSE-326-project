@@ -25,6 +25,7 @@ app.get('/v1/dummy', async (req, res) => {
 });
 
 // hotel list 
+// TODO room, adults, children ke nei nai
 app.get('/v1/hotels/search', async (req, res) => {
     try {
         const { location, check_in_date, check_out_date } = req.query;

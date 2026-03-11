@@ -35,12 +35,12 @@ const Navbar = () => {
                     }}>.</span>
                     com
                 </div>
-                <div className="search-container">
+                {/* <div className="search-container">
                     <input type="text" placeholder="Destination, attraction, hotel, etc" />
                     <button className="search-btn">
                         <Search size={18} color="white" />
                     </button>
-                </div>
+                </div> */}
             </div>
 
             <div className="nav-right">
