@@ -13,12 +13,15 @@ import {
   GooglePayIcon,
 } from './PaymentIcons';
 
+import { useNavigate } from 'react-router-dom';
+
 const PAYMENT_METHODS = [
   { key: 'card', label: 'New credit/debit card' },
   { key: 'applePay', label: 'Apple Pay' },
   { key: 'paypal', label: 'PayPal' },
   { key: 'googlePay', label: 'Google Pay' },
 ];
+
 
 const METHOD_ICONS = {
   card: [VisaIcon, MastercardIcon, JCBIcon, AmexIcon, DiscoverIcon, DinersIcon],
@@ -50,6 +53,7 @@ const formatExpiry = (value) => {
 };
 
 function PaymentPage() {
+  const navigate = useNavigate();
   const [selectedMethod, setSelectedMethod] = useState('card');
   const [formData, setFormData] = useState({
     cardNumber: '',
@@ -69,7 +73,7 @@ function PaymentPage() {
       setTimeLeft((prev) => {
         const parts = prev.split(':').map(Number);
         let [h, m, s] = parts;
-        
+
         if (s > 0) {
           s--;
         } else if (m > 0) {
@@ -82,7 +86,7 @@ function PaymentPage() {
         } else {
           return '00:00:00';
         }
-        
+
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
       });
     }, 1000);
@@ -149,10 +153,36 @@ function PaymentPage() {
     }
   };
 
+  const gotoHome = () => {
+    navigate('/hotels/search');
+  };
+
   return (
     <div className="app-shell">
       <header className="payment-topbar">
-        <div className="payment-topbar__brand">Trip.com</div>
+        <div className="payment-topbar__brand">
+          <div onClick={()=> gotoHome()}
+            style={{
+              fontFamily: "TripFont",
+              fontSize: '30px',
+            }}
+            >
+            Trip<span style={{
+              color: '#e2c20e',
+            }}>.</span>
+            com
+          </div>
+          {/* <img
+            src="/assets/logo2.png"
+            alt="Trip.com"
+            className="logo"
+            
+            onClick={() => window.location.href = '/hotels/search'}
+            style={{ cursor: 'pointer',
+              scale: '2',
+             }}
+          /> com */}
+        </div>
         <div className="payment-topbar__help">Customer support</div>
       </header>
 
@@ -233,13 +263,12 @@ function PaymentPage() {
             {errorMessage && <p className="status status--error">{errorMessage}</p>}
             {paymentResult && (
               <p
-                className={`status ${
-                  paymentResult.status === 'SUCCESS'
+                className={`status ${paymentResult.status === 'SUCCESS'
                     ? 'status--success'
                     : paymentResult.status === 'PENDING'
-                    ? 'status--pending'
-                    : 'status--error'
-                }`}
+                      ? 'status--pending'
+                      : 'status--error'
+                  }`}
               >
                 {paymentResult.status}: {paymentResult.message}
                 {paymentResult.transactionId
@@ -281,7 +310,7 @@ function PaymentPage() {
                 <strong>{BOOKING.night}</strong>
               </div>
             </div>
-            
+
             <h4 className="price-section-header">Price Details</h4>
             <div className="price-line">
               <span>Prepay online</span>
