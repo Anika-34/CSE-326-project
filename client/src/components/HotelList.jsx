@@ -3,6 +3,7 @@ import { Fragment } from 'react';
 import HotelCard from './HotelCard';
 import "../components/ResultSearchBar"
 import ResultSearchBar from '../components/ResultSearchBar';
+import Navbar from './Navbar';
 
 // TODO
 // dummy data passed for now, pore useparam diye kprte hoobe
@@ -54,8 +55,8 @@ const HotelList = ({ location = "New York", checkInDate = "2026-02-15", checkOut
     if (loading) return <div className="loader">Searching for best deals...</div>;
 
     return <Fragment>
+        <Navbar />
         <div className="container-fluid px-4">
-            
                 <ResultSearchBar searchData={searchData} />
             
         

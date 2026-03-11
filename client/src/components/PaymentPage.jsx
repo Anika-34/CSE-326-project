@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import './PaymentPage.css';
+import '../styles/PaymentPage.css';
 import { getSimulationHint, processMockPayment } from '../services/mockPaymentGateway';
 import {
   VisaIcon,
@@ -11,7 +11,7 @@ import {
   ApplePayIcon,
   PayPalIcon,
   GooglePayIcon,
-} from '../components/PaymentIcons';
+} from './PaymentIcons';
 
 const PAYMENT_METHODS = [
   { key: 'card', label: 'New credit/debit card' },

@@ -2,6 +2,7 @@ import React from 'react'
 import { Fragment } from 'react'
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import Navbar from './Navbar';
 
 
 const CheckAvailability = () => {
@@ -21,6 +22,7 @@ const CheckAvailability = () => {
     }, [hotel_id]);
 
     return <Fragment>
+        <Navbar />
         <h1>Check Availability for Hotel ID: {hotel_id}</h1>
     </Fragment>
 }

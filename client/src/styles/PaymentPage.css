@@ -70,8 +70,6 @@
   margin: -60px auto 0; /* Negative top margin pulls the cards UP into the blue bar */
   position: relative;    /* Ensures it sits on top of the header */
   z-index: 10;
-  
-  /* Remove background: #f5f7fa; if you want it to look like the screenshot */
   background: transparent;
   padding: 0 16px 34px; 
   display: grid;
