@@ -18,7 +18,6 @@ CREATE TABLE hotels (
     name VARCHAR(255) NOT NULL,
     location VARCHAR(255) NOT NULL,
     description TEXT,
-    overall_rating DECIMAL(3, 2) DEFAULT 0.0,
     image_url VARCHAR(255)
 );
 
@@ -155,8 +154,8 @@ INSERT INTO users (name, email, password, role) VALUES
 ('Charlie Brown', 'charlie@example.com', 'hashed_password_3', 'GUEST'),
 ('Admin User', 'admin@example.com', 'hashed_password_4', 'ADMIN');
 
-INSERT INTO hotels (name, location, description, overall_rating, image_url) VALUES 
-('Grand Plaza Hotel', 'New York', 'Luxury hotel in downtown Manhattan', 4.5, 'https://picsum.photos/400/300');
+INSERT INTO hotels (name, location, description, image_url) VALUES 
+('Grand Plaza Hotel', 'New York', 'Luxury hotel in downtown Manhattan', 'https://picsum.photos/400/300');
 
 INSERT INTO hotel_ratings (hotel_id, cleanliness_score, service_score, location_score, overall_score) VALUES 
 (1, 4.8, 4.7, 4.5, 4.67);
@@ -170,7 +169,7 @@ INSERT INTO amenities (name, description, is_chargeable, category) VALUES
 ('Spa Services', 'Professional massage and wellness treatments', TRUE, 'Wellness');
 
 INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
-(1, 1), (1, 2);  -- room 1 gets WiFi and Pool
+(1, 1), (1, 2);  
 
 INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
 (1, 'Early bird discount', 15.00, '2026-01-01', '2026-04-28');
@@ -199,9 +198,8 @@ INSERT INTO favourites (user_id, hotel_id) VALUES
 INSERT INTO deals (hotel_id, description, discount_percentage, start_date, end_date) VALUES 
 (1, 'Early bird discount', 15.00, '2026-01-01', '2026-04-28');
 
--- another hotel --
-INSERT INTO hotels (name, location, description, overall_rating, image_url) VALUES 
-('Oceanview Resort', 'New York', 'Beachfront resort with stunning ocean views', 4.2, 'https://picsum.photos/400/300');
+INSERT INTO hotels (name, location, description, image_url) VALUES 
+('Oceanview Resort', 'New York', 'Beachfront resort with stunning ocean views', 'https://picsum.photos/400/300');
 
 INSERT INTO hotel_ratings (hotel_id, cleanliness_score, service_score, location_score, overall_score) VALUES 
 (2, 4.5, 4.3, 4.0, 4.27);
@@ -213,7 +211,7 @@ INSERT INTO amenities (name, description, is_chargeable, category) VALUES
 ('Beach Access', 'Private beach access for guests', FALSE, 'Recreation');
 
 INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
-(2, 3);  -- room 2 gets Beach Access
+(2, 3); 
 
 INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES 
 (2, 'Free cancellation up to 14 days before check-in', 'Full refund for cancellations 14+ days prior');
@@ -233,7 +231,7 @@ INSERT INTO rooms (hotel_id, room_type, price_per_night, capacity) VALUES
 (1, 'Standard Room', 150.00, 2);
 
 INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
-(3, 1);  -- room 3 gets WiFi
+(3, 1); 
 
 INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES 
 (1, 'Free cancellation up to 7 days before check-in', 'Full refund for cancellations 7+ days prior');
@@ -244,7 +242,6 @@ INSERT INTO deals (room_id, description, discount_percentage, start_date, end_da
 INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
 (3, '2026-02-15', '2026-02-18');
 
-
 INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
 (1, 3);  
 
@@ -254,8 +251,6 @@ INSERT INTO amenities (name, description, is_chargeable, category) VALUES
 INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
 (1, 4);  
 
-
--- add new room to hotel 1
 INSERT INTO rooms (hotel_id, room_type, price_per_night, capacity) VALUES 
 (1, 'Family Suite', 300.00, 4);
 
@@ -278,6 +273,92 @@ INSERT INTO reviews (user_id, hotel_id, comment, rating) VALUES
 
 INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
 (4, '2026-02-15', '2026-02-18');
+
+INSERT INTO hotel_ratings (hotel_id, cleanliness_score, service_score, location_score, overall_score) VALUES 
+(1, 4.7, 4.6, 4.8, 4.70);
+
+INSERT INTO hotel_ratings (hotel_id, cleanliness_score, service_score, location_score, overall_score) VALUES 
+(1, 4.4, 4.2, 4.1, 4.80);
+
+INSERT INTO hotel_ratings (hotel_id, cleanliness_score, service_score, location_score, overall_score) VALUES 
+(1, 4.6, 4.5, 4.7, 4.60);
+
+INSERT INTO hotel_ratings (hotel_id, cleanliness_score, service_score, location_score, overall_score) VALUES 
+(2, 4.2, 4.0, 4.3, 4.17);
+
+INSERT INTO hotel_ratings (hotel_id, cleanliness_score, service_score, location_score, overall_score) VALUES 
+(2, 4.4, 4.2, 4.5, 4.37);
+
+INSERT INTO hotel_ratings (hotel_id, cleanliness_score, service_score, location_score, overall_score) VALUES 
+(2, 4.0, 3.8, 4.0, 3.93);
+
+INSERT INTO hotels (name, location, description, image_url) VALUES 
+('City Center Inn', 'China', 'Affordable hotel located in the heart of the city', 'https://picsum.photos/400/300');
+
+INSERT INTO hotel_ratings (hotel_id, cleanliness_score, service_score, location_score, overall_score) VALUES 
+(3, 4.0, 3.5, 4.5, 4.00);
+
+INSERT INTO rooms (hotel_id, room_type, price_per_night, capacity) VALUES 
+(3, 'Standard Room', 80.00, 2);
+
+INSERT INTO amenities (name, description, is_chargeable, category) VALUES 
+('Airport Shuttle', 'Complimentary shuttle service to and from the airport', FALSE, 'Transportation');
+
+INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
+(5, 6);  -- room 5 gets Airport Shuttle
+
+INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES 
+(3, 'Free cancellation up to 3 days before check-in', 'Full refund for cancellations 3+ days prior');
+
+INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
+(5, 'Weekend getaway deal', 25.00, '2026-02-01', '2026-02-28');
+
+INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
+(5, '2026-02-15', '2026-02-18');    
+
+INSERT INTO surroundings (hotel_id, name, description) VALUES 
+(3, 'City Museum', 'Museum showcasing the history and culture of the city'),
+(3, 'Central Market', 'Vibrant market offering local food and crafts');
+
+INSERT INTO reviews (user_id, hotel_id, comment, rating) VALUES 
+(2, 3, 'Good value for the price.', 4),
+(3, 3, 'Clean rooms but noisy at night.', 3),
+(1, 3, 'Convenient location and friendly staff!', 5);
+
+INSERT INTO hotels (name, location, description, image_url) VALUES 
+('Mountain View Lodge', 'Singapore', 'Cozy lodge with stunning mountain views', 'https://picsum.photos/400/300');
+
+INSERT INTO hotel_ratings (hotel_id, cleanliness_score, service_score, location_score, overall_score) VALUES 
+(4, 4.5, 4.3, 4.8, 4.53);
+
+INSERT INTO rooms (hotel_id, room_type, price_per_night, capacity) VALUES 
+(4, 'Mountain View Room', 180.00, 2);
+
+INSERT INTO amenities (name, description, is_chargeable, category) VALUES 
+('Hiking Trails', 'Access to nearby hiking trails with scenic views', FALSE, 'Recreation');
+
+INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
+(6, 7);  -- room 6 gets Hiking Trails
+
+INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES 
+(4, 'Free cancellation up to 5 days before check-in', 'Full refund for cancellations 5+ days prior');
+
+INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
+(6, 'Nature escape deal', 20.00, '2026-02-01', '2026-02-28');
+
+INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
+(6, '2026-02-15', '2026-02-18');
+
+INSERT INTO surroundings (hotel_id, name, description) VALUES 
+(4, 'Mountain Trailhead', 'Starting point for popular mountain hiking trails'),
+(4, 'Scenic Overlook', 'Viewpoint offering panoramic views of the surrounding mountains');
+
+INSERT INTO reviews (user_id, hotel_id, comment, rating) VALUES 
+(2, 4, 'Beautiful location but the rooms could be updated. This is a much longer comment to make it bigger and more detailed.', 4),
+(3, 4, 'Amazing views and peaceful atmosphere. The experience was incredible and I would definitely stay here again.', 5),
+(1, 4, 'Great for nature lovers! The hiking trails are fantastic and the staff was very helpful throughout my stay.', 5);
+
+
 
 -- delete --
 -- drop database tripv1;

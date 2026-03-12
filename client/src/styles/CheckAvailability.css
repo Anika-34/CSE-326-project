@@ -335,7 +335,7 @@
 .ca-reviews-container {
     max-width: 900px;
     margin: 0 auto;
-    padding: 20px 0;
+    padding: 7px 0;
 }
 
 .ca-review-card {
@@ -344,7 +344,7 @@
     border: 1px solid #e6e6e6;
     border-radius: 8px;
     padding: 24px;
-    margin-bottom: 20px;
+    margin-bottom: 3px;
     transition: box-shadow 0.2s;
 }
 
@@ -429,6 +429,135 @@
     color: #008009;
     font-weight: 600;
     margin-top: 8px;
+}
+
+
+
+.ca-score-label {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.ca-total-reviews {
+    font-size: 13px;
+    color: #666;
+}
+
+.ca-review-rating-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ca-review-score-label {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.ca-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.ca-big-score {
+    background: #003580;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.ca-category-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.ca-bar-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.ca-bar-bg {
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.ca-bar-fill {
+    height: 100%;
+    background: #003580;
+}
+
+.ca-reviews-list-side {
+    flex: 1;
+}
+
+
+/* Container to keep content away from the page edges */
+.ca-container {
+    max-width: 1150px; /* Adjust this to match your header width */
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.ca-reviews-layout {
+    display: flex;
+    gap: 30px; /* Space between sidebar and reviews */
+    margin-top: 30px;
+    align-items: flex-start;
+}
+
+/* Sidebar styling */
+.ca-ratings-summary-sidebar {
+    flex: 0 0 280px; /* Fixed width for the ratings box */
+    padding: 24px;
+    background: #f8faff;
+    border-radius: 12px;
+    border: 1px solid #e7eefb;
+}
+
+/* Reviews list styling */
+.ca-reviews-list-side {
+    flex: 1; /* Takes up the remaining space */
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Individual Review Card */
+.ca-review-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    gap: 20px;
+}
+
+/* Ensure mobile stacking */
+@media (max-width: 992px) {
+    .ca-reviews-layout {
+        flex-direction: column;
+    }
+    .ca-ratings-summary-sidebar {
+        width: 100%;
+        flex: none;
+    }
 }
 
 .ca-surroundings-title {
@@ -641,4 +770,27 @@
     to {
         transform: rotate(360deg)
     }
+}
+
+/* Container for the tabs */
+.ca-tabs-header {
+    display: flex;
+    border-bottom: 1px solid #e0e0e0; 
+    gap: 20px;
+    padding: 0 20px;
+}
+
+.ca-tab-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    color: #4a4a4a;
+    font-weight: 500;
+    border-bottom: 3px solid transparent; 
+    transition: all 0.2s ease-in-out;
+}
+
+/* The Active State */
+.ca-tab-item.active {
+    color: #0052cc; /* Match your blue theme */
+    border-bottom: 3px solid #0052cc; /* This will always match the text width */
 }

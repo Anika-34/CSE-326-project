@@ -2,6 +2,7 @@ import React from 'react';
 import { Heart, MapPin, Users, Bed, ChevronRight } from 'lucide-react';
 import '../styles/HotelCard.css';
 import { useNavigate } from 'react-router-dom';
+import { getRatingLabel } from '../services/ratingUtils';
 
 
 const HotelCard = ({ hotel, searchDetails }) => {
@@ -11,7 +12,6 @@ const HotelCard = ({ hotel, searchDetails }) => {
     name,
     stars,
     rating,
-    ratingText,
     reviewCount,
     image,
     location,
@@ -25,17 +25,19 @@ const HotelCard = ({ hotel, searchDetails }) => {
   //   const baseUrl = process.env.REACT_APP_API_URL || '';
   const navigate = useNavigate();
   const checkAvailability = (hotel_id) => {
+    const payload = {
+      location: location,
+      checkInDate: searchDetails.checkInDate,
+      checkOutDate: searchDetails.checkOutDate,
+      nights: searchDetails.nights,
+      room: searchDetails.room,
+      adults: searchDetails.adults,
+      children: searchDetails.children
+    };
+    console.log('search details in HotelCard:', payload);
     navigate(`/hotels/details/${hotel_id}`,
       {
-        state: {
-          location: location,
-          checkInDate: searchDetails.checkInDate,
-          checkOutDate: searchDetails.checkOutDate,
-          nights: searchDetails.nights,
-          room: searchDetails.room,
-          adults: searchDetails.adults,
-          children: searchDetails.children
-        }
+        state: payload
       });
   }
 
@@ -58,9 +60,18 @@ const HotelCard = ({ hotel, searchDetails }) => {
 
           <div className="rating-row">
             <span className="rating-badge">{rating || 'N/A'}</span>
-            <span className="rating-text">{ratingText}</span>
+            {(() => {
+              const rLabel = getRatingLabel(rating, 5);
+              return (
+                <span
+                  className="rating-label-badge"
+                  style={{ color: rLabel.color, backgroundColor: rLabel.bg }}
+                >
+                  {rLabel.label}
+                </span>
+              );
+            })()}
             <span className="review-count">
-
               {reviewCount?.toLocaleString() ?? 0} reviews
             </span>
           </div>
