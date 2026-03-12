@@ -1,19 +1,45 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MapPin, Calendar, User, Search, X, Plus, Minus } from 'lucide-react';
+import { MapPin, Calendar, User, Search, RefreshCw, X, Plus, Minus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import '../styles/ResultSearchBar.css';
 
+const SEARCH_STATE_KEY = 'trip.searchState';
+
+const getStoredSearchState = () => {
+    try {
+        const raw = localStorage.getItem(SEARCH_STATE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+};
+
 const ResultSearchBar = ({ searchData }) => {
+    const navigate = useNavigate();
     const [showGuestPopup, setShowGuestPopup] = useState(false);
-    const [locationInput, setLocationInput] = useState(searchData.location || '');
+    const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+    const [isLocationFocused, setIsLocationFocused] = useState(false);
+    const [locationSuggestions, setLocationSuggestions] = useState([]);
+    const [locationInput, setLocationInput] = useState(() => {
+        const stored = getStoredSearchState();
+        return searchData?.location || stored?.location || '';
+    });
 
 
-    const [counts, setCounts] = useState({
-        rooms: 1,
-        adults: 2,
-        children: 0
+    const [counts, setCounts] = useState(() => {
+        const stored = getStoredSearchState();
+        return {
+            rooms: Number(searchData?.room ?? stored?.room ?? 1),
+            adults: Number(searchData?.adults ?? stored?.adults ?? 2),
+            children: Number(searchData?.children ?? stored?.children ?? 0)
+        };
     });
     
     const popupRef = useRef(null);
+    const locationRef = useRef(null);
+    const suppressNextSuggestionOpenRef = useRef(false);
+    const apiBaseUrl = process.env.REACT_APP_API_URL || '';
 
     // Close popup when clicking outside
     useEffect(() => {
@@ -21,10 +47,52 @@ const ResultSearchBar = ({ searchData }) => {
             if (popupRef.current && !popupRef.current.contains(event.target)) {
                 setShowGuestPopup(false);
             }
+            if (locationRef.current && !locationRef.current.contains(event.target)) {
+                setIsLocationFocused(false);
+                setShowLocationSuggestions(false);
+            }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    useEffect(() => {
+        const query = locationInput.trim();
+        if (!query) {
+            setLocationSuggestions([]);
+            setShowLocationSuggestions(false);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            try {
+                const res = await fetch(
+                    `${apiBaseUrl}/v1/hotels/location-suggestions?query=${encodeURIComponent(query)}`
+                );
+                if (!res.ok) {
+                    setLocationSuggestions([]);
+                    setShowLocationSuggestions(false);
+                    return;
+                }
+                const data = await res.json();
+                const suggestions = Array.isArray(data) ? data : [];
+                setLocationSuggestions(suggestions);
+                if (suppressNextSuggestionOpenRef.current) {
+                    suppressNextSuggestionOpenRef.current = false;
+                    setShowLocationSuggestions(false);
+                } else if (isLocationFocused) {
+                    setShowLocationSuggestions(suggestions.length > 0);
+                } else {
+                    setShowLocationSuggestions(false);
+                }
+            } catch {
+                setLocationSuggestions([]);
+                setShowLocationSuggestions(false);
+            }
+        }, 250);
+
+        return () => clearTimeout(timer);
+    }, [locationInput, apiBaseUrl, isLocationFocused]);
 
     const updateCount = (field, delta) => {
         setCounts(prev => ({
@@ -34,25 +102,49 @@ const ResultSearchBar = ({ searchData }) => {
     };
 
     useEffect(() => {
-        setLocationInput(searchData.location);
+        const stored = getStoredSearchState();
+        setLocationInput(searchData?.location || stored?.location || '');
         setCounts({
-            rooms: searchData.room,
-            adults: searchData.adults,
-            children: searchData.children
+            rooms: Number(searchData?.room ?? stored?.room ?? 1),
+            adults: Number(searchData?.adults ?? stored?.adults ?? 2),
+            children: Number(searchData?.children ?? stored?.children ?? 0)
         });
     }, [searchData]);
+
+    const resolvedCheckIn = searchData?.checkIn || getStoredSearchState()?.checkIn || new Date().toISOString().split('T')[0];
+    const resolvedCheckOut = searchData?.checkOut || getStoredSearchState()?.checkOut || new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const resolvedNights = searchData?.nights || Math.max(1, Math.ceil((new Date(resolvedCheckOut) - new Date(resolvedCheckIn)) / (1000 * 60 * 60 * 24)));
 
     const handleUpdateSearch = () => {
         const params = new URLSearchParams(); // Fresh params
         params.set('location', locationInput);
-        params.set('checkIn', searchData.checkIn);
-        params.set('checkOut', searchData.checkOut);
+        params.set('checkIn', resolvedCheckIn);
+        params.set('checkOut', resolvedCheckOut);
         params.set('rooms', String(counts.rooms));
         params.set('adults', String(counts.adults));
         params.set('children', String(counts.children));
 
-        // Use window.location.search to trigger a re-render of HotelList
-        window.location.search = params.toString();
+        localStorage.setItem(
+            SEARCH_STATE_KEY,
+            JSON.stringify({
+                location: locationInput,
+                checkIn: resolvedCheckIn,
+                checkOut: resolvedCheckOut,
+                nights: resolvedNights,
+                room: counts.rooms,
+                adults: counts.adults,
+                children: counts.children
+            })
+        );
+
+        navigate(`/hotels/search?${params.toString()}`);
+    };
+
+    const handleSelectLocation = (selectedLocation) => {
+        suppressNextSuggestionOpenRef.current = true;
+        setLocationInput(selectedLocation);
+        setIsLocationFocused(false);
+        setShowLocationSuggestions(false);
     };
 
     const formatDate = (dateString) => {
@@ -63,8 +155,15 @@ const ResultSearchBar = ({ searchData }) => {
         }).format(date);
     };
 
-    const { location, checkIn, checkOut, nights } = searchData;
+    const checkIn = resolvedCheckIn;
+    const checkOut = resolvedCheckOut;
+    const nights = resolvedNights;
     const guestText = `${counts.rooms} room, ${counts.adults} adults, ${counts.children} children`;
+    const isSearchUpdated =
+        locationInput.trim() !== String(searchData?.location || '').trim() ||
+        counts.rooms !== Number(searchData?.room ?? 1) ||
+        counts.adults !== Number(searchData?.adults ?? 2) ||
+        counts.children !== Number(searchData?.children ?? 0);
 
     return (
         <div className="search-bar-container">
@@ -74,13 +173,19 @@ const ResultSearchBar = ({ searchData }) => {
                 <span className="search-text">{location}</span>
                 <X size={16} className="clear-icon" />
             </div> */}
-            <div className="search-section location">
+            <div className="search-section location" ref={locationRef}>
                 <MapPin size={20} className="icon-blue" />
                 <input 
                     type="text"
                     className="search-input"
                     value={locationInput}
                     onChange={(e) => setLocationInput(e.target.value)}
+                    onFocus={() => {
+                        setIsLocationFocused(true);
+                        if (locationSuggestions.length > 0) {
+                            setShowLocationSuggestions(true);
+                        }
+                    }}
                     placeholder="Where are you going?"
                     style={{
                         border:0,
@@ -91,9 +196,26 @@ const ResultSearchBar = ({ searchData }) => {
                     <X 
                         size={16} 
                         className="clear-icon" 
-                        onClick={() => setLocationInput('')} 
+                        onClick={() => {
+                            setLocationInput('');
+                            setLocationSuggestions([]);
+                            setShowLocationSuggestions(false);
+                        }} 
                         style={{ cursor: 'pointer' }}
                     />
+                )}
+                {showLocationSuggestions && (
+                    <div className="location-suggestions-dropdown">
+                        {locationSuggestions.map((item, index) => (
+                            <div
+                                key={`${item}-${index}`}
+                                className="location-suggestion-item"
+                                onClick={() => handleSelectLocation(item)}
+                            >
+                                {item}
+                            </div>
+                        ))}
+                    </div>
                 )}
             </div>
 
@@ -147,8 +269,8 @@ const ResultSearchBar = ({ searchData }) => {
 
             <button className="search-button"
                 onClick={handleUpdateSearch}>
-                <Search size={20} />
-                <span>Search</span>
+                {isSearchUpdated ? <RefreshCw size={20} /> : <Search size={20} />}
+                <span>{isSearchUpdated ? 'Update' : 'Search'}</span>
             </button>
         </div>
     );

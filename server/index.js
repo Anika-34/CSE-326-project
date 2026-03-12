@@ -24,6 +24,27 @@ app.get('/v1/dummy', async (req, res) => {
     }
 });
 
+app.get('/v1/hotels/location-suggestions', async (req, res) => {
+    try {
+        const query = String(req.query.query || '').trim();
+        const result = await pool.query(
+            `
+            SELECT DISTINCT h.location
+            FROM hotels h
+            WHERE h.location ILIKE $1
+            ORDER BY h.location ASC
+            LIMIT 8
+            `,
+            [`%${query}%`]
+        );
+
+        res.json(result.rows.map((row) => row.location));
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
 // hotel list 
 // TODO room, adults, children ke nei nai
 app.get('/v1/hotels/search', async (req, res) => {
@@ -36,9 +57,7 @@ app.get('/v1/hotels/search', async (req, res) => {
                 h.hotel_id,
                 h.name,
                 h.location,
-                h.overall_rating,
                 h.image_url,
-                hr.overall_score,
                 r.room_type,
                 r.price_per_night,
                 r.capacity,
@@ -47,7 +66,6 @@ app.get('/v1/hotels/search', async (req, res) => {
                 d.description AS deal_description
             FROM hotels h
             JOIN rooms r ON h.hotel_id = r.hotel_id
-            LEFT JOIN hotel_ratings hr ON h.hotel_id = hr.hotel_id
             LEFT JOIN policies p ON h.hotel_id = p.hotel_id
             LEFT JOIN deals d ON r.room_id = d.room_id
             JOIN room_availability ra ON r.room_id = ra.room_id
@@ -56,8 +74,8 @@ app.get('/v1/hotels/search', async (req, res) => {
                 AND ra.start_date <= $2
                 AND ra.end_date >= $3
             GROUP BY 
-                h.hotel_id, h.name, h.location, h.overall_rating, h.image_url,
-                hr.overall_score, r.room_type, r.price_per_night, r.capacity,
+                h.hotel_id, h.name, h.location, h.image_url,
+                r.room_type, r.price_per_night, r.capacity,
                 p.cancellation_policy, d.discount_percentage, d.description
             ORDER BY h.hotel_id, r.capacity DESC;
             `,
@@ -78,9 +96,27 @@ app.get('/v1/hotels/search', async (req, res) => {
             )
             : { rows: [] };
 
+
+        const overallScores = hotelIds.length
+            ? await pool.query(
+                `SELECT hr.hotel_id,
+                ROUND(AVG(hr.overall_score), 1) as overall_score
+                FROM hotel_ratings hr
+                WHERE hr.hotel_id = ANY($1::int[])
+                GROUP BY hr.hotel_id
+                `,
+                [hotelIds]
+            )
+            : { rows: [] };
+
         result.rows.forEach(hotel => {
             const reviewCount = reviewCounts.rows.find(rc => rc.hotel_id === hotel.hotel_id);
             hotel.review_count = reviewCount ? reviewCount.review_count : 0;
+        });
+
+        result.rows.forEach(hotel => {
+            const overallScore = overallScores.rows.find(os => os.hotel_id === hotel.hotel_id);
+            hotel.overall_score = overallScore ? overallScore.overall_score : null;
         });
 
         // console.log('Raw DB result:', result.rows);
@@ -99,16 +135,17 @@ app.get('/v1/hotels/search', async (req, res) => {
 
             const score = Number(h.overall_score) || 0
 
-            let ratingText = "Good"
+            let ratingText = "Poor"
             if (score >= 4.5) ratingText = "Excellent"
-            else if (score >= 4) ratingText = "Very Good"
-            else if (score >= 3) ratingText = "Good"
+            else if (score >= 3.5) ratingText = "Very Good"
+            else if (score >= 2.5) ratingText = "Good"
+            else if (score >= 1.5) ratingText = "Average"
 
             return {
                 id: h.hotel_id,
                 name: h.name,
-                stars: Math.round(h.overall_rating),
-                rating: (score * 2).toFixed(1),
+                stars: Math.round(h.overall_score),
+                rating: (score).toFixed(1),
                 ratingText,
                 reviewCount: Number(h.review_count),
 
@@ -143,6 +180,11 @@ app.get('/v1/hotels/search', async (req, res) => {
 app.get('/v1/hotels/details/:hotelId', async (req, res) => {
     try {
         const { hotelId } = req.params;
+        const parsedHotelId = Number(hotelId);
+
+        if (!Number.isInteger(parsedHotelId) || parsedHotelId <= 0) {
+            return res.status(400).json({ error: 'Invalid hotelId' });
+        }
 
         const hotelQuery = `
           SELECT 
@@ -151,7 +193,6 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
             h.location,
             h.description,
             h.image_url,
-            h.overall_rating,
             hr.cleanliness_score,
             hr.service_score,
             hr.location_score,
@@ -233,15 +274,28 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
         ORDER BY r.review_date DESC
         `;
 
+        const ratingQuery = `
+        SELECT 
+            ROUND(AVG(hr.cleanliness_score), 1) as cleanliness_score,
+            ROUND(AVG(hr.service_score), 1) as service_score,
+            ROUND(AVG(hr.location_score), 1) as location_score,
+            ROUND(AVG(hr.overall_score), 1) as overall_score
+        FROM hotel_ratings hr
+        WHERE hr.hotel_id = $1;
+        `;
 
-        const [hotel, amenities, rooms, deals, surroundings, availableRoomsResult, reviewsResult] = await Promise.all([
-            pool.query(hotelQuery, [hotelId]),
-            pool.query(amenitiesQuery, [hotelId]),
-            pool.query(roomsQuery, [hotelId]),
-            pool.query(dealsQuery, [hotelId]),
-            pool.query(surroundingsQuery, [hotelId]),
-            pool.query(numberOfAvailableRoomsQuery, [hotelId]),
-            pool.query(reviewQuery, [hotelId])
+        // console.log(await pool.query(ratingQuery, [hotelId]))
+
+
+        const [hotel, amenities, rooms, deals, surroundings, availableRoomsResult, reviewsResult, ratingResult] = await Promise.all([
+            pool.query(hotelQuery, [parsedHotelId]),
+            pool.query(amenitiesQuery, [parsedHotelId]),
+            pool.query(roomsQuery, [parsedHotelId]),
+            pool.query(dealsQuery, [parsedHotelId]),
+            pool.query(surroundingsQuery, [parsedHotelId]),
+            pool.query(numberOfAvailableRoomsQuery, [parsedHotelId]),
+            pool.query(reviewQuery, [parsedHotelId]),
+            pool.query(ratingQuery, [parsedHotelId])
         ]);
 
         res.json({
@@ -252,7 +306,8 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
             surroundings: surroundings.rows,
             availableRooms: availableRoomsResult.rowCount > 0 ? availableRoomsResult.rows[0].available_rooms : 0,
             reviews: reviewsResult.rowCount > 0 ? reviewsResult.rows : [],
-            reviewCount: reviewsResult.rowCount
+            reviewCount: reviewsResult.rowCount,
+            ratings: ratingResult.rowCount > 0 ? ratingResult.rows[0] : null
         });
 
     } catch (err) {

@@ -28,7 +28,7 @@ const Test = () => {
                 <p>Email: {user.email}</p>
             </div>
         ))}
-        <button onClick={()=>window.location.href = '/hotels/search/?location=New%20York&checkIn=2026-02-15&checkOut=2026-02-18&rooms=1&adults=0&children=1'}>Go to Hotel Search</button>
+        <button onClick={()=>window.location.href = '/hotels/search/?location=New%20York&checkIn=2026-02-15&checkOut=2026-02-18&room=1&adults=0&children=1'}>Go to Hotel Search</button>
     </Fragment>
 }
 

@@ -6,6 +6,8 @@ import ResultSearchBar from '../components/ResultSearchBar';
 import Navbar from './Navbar';
 import { useSearchParams } from 'react-router-dom';
 
+const SEARCH_STATE_KEY = 'trip.searchState';
+
 // TODO
 // dummy data passed for now, pore useparam diye kprte hoobe
 // query te room, adults, children egula pass kori nai
@@ -38,34 +40,50 @@ const HotelList = () => {
         children
     };
 
-    const getHotels = async () => {
-        try {
-            const response = await fetch(
-                `${baseUrl}/v1/hotels/search?location=${encodeURIComponent(location)}&check_in_date=${encodeURIComponent(checkInDate)}&check_out_date=${encodeURIComponent(checkOutDate)}`
-            );
-
-            const contentType = response.headers.get('content-type') || '';
-            const body = contentType.includes('application/json')
-                ? await response.json()
-                : await response.text();
-
-            if (!response.ok) {
-                throw new Error(
-                    typeof body === 'string' ? body : body?.error || `HTTP ${response.status}`
-                );
-            }
-            console.log('API response:', body);
-            setHotels(body);
-        } catch (err) {
-            console.error('getHotels error:', err.message);
-        } finally {
-            setLoading(false);
-        }
-    }
+    useEffect(() => {
+        localStorage.setItem(
+            SEARCH_STATE_KEY,
+            JSON.stringify({
+                location,
+                checkIn: checkInDate,
+                checkOut: checkOutDate,
+                nights,
+                room,
+                adults,
+                children
+            })
+        );
+    }, [location, checkInDate, checkOutDate, nights, room, adults, children]);
 
     useEffect(() => {
+        const getHotels = async () => {
+            setLoading(true);
+            try {
+                const response = await fetch(
+                    `${baseUrl}/v1/hotels/search?location=${encodeURIComponent(location)}&check_in_date=${encodeURIComponent(checkInDate)}&check_out_date=${encodeURIComponent(checkOutDate)}`
+                );
+
+                const contentType = response.headers.get('content-type') || '';
+                const body = contentType.includes('application/json')
+                    ? await response.json()
+                    : await response.text();
+
+                if (!response.ok) {
+                    throw new Error(
+                        typeof body === 'string' ? body : body?.error || `HTTP ${response.status}`
+                    );
+                }
+                console.log('API response:', body);
+                setHotels(body);
+            } catch (err) {
+                console.error('getHotels error:', err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         getHotels();
-    }, []);
+    }, [baseUrl, location, checkInDate, checkOutDate]);
 
     if (loading) return <div className="loader">Searching for best deals...</div>;
 

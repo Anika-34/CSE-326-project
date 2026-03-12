@@ -18,7 +18,8 @@ const AvailabilityBar = ({ tabs = [], activeTab, onTabChange, price, onSelectRoo
     top: 0,
     left: isSticky ? '50%' : 'auto',
     transform: isSticky ? 'translateX(-50%)' : 'none',
-    width: '1100px',
+    width: '100%',
+    maxWidth: '1100px',
     zIndex: 1100,
     margin: isSticky ? '0' : '0 auto',
 }}>

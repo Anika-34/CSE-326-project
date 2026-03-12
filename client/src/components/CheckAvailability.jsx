@@ -6,6 +6,9 @@ import AvailabilityBar from './AvailabilityBar';
 import ResultSearchBar from './ResultSearchBar';
 import '../styles/CheckAvailability.css';
 import { useRef } from 'react';
+import { getRatingLabel } from '../services/ratingUtils';
+
+const SEARCH_STATE_KEY = 'trip.searchState';
 
 const TABS = [
     { label: 'Rooms', id: 'rooms' },
@@ -18,19 +21,30 @@ const TABS = [
 const CheckAvailability = () => {
     const locationState = useLocation();
     const searchParams = locationState.state || {};
-    const { location, checkInDate, checkOutDate, nights, room, adults, children } = searchParams;
-    // console.log('Received location state:', locationState);
-    const roomText =
-        `${room} ${room > 1 ? 'rooms' : 'room'}, ` +
-        `${adults} ${adults > 1 ? 'adults' : 'adult'}` +
-        `${children ? `, ${children} ${children > 1 ? 'children' : 'child'}` : ''}`;
+
+    let storedSearch = {};
+    try {
+        storedSearch = JSON.parse(localStorage.getItem(SEARCH_STATE_KEY) || '{}');
+    } catch {
+        storedSearch = {};
+    }
+
+    const location = searchParams.location || storedSearch.location || '';
+    const checkInDate = searchParams.checkInDate || storedSearch.checkIn || new Date().toISOString().split('T')[0];
+    const checkOutDate = searchParams.checkOutDate || storedSearch.checkOut || new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const room = Number(searchParams.room ?? storedSearch.room ?? 1);
+    const adults = Number(searchParams.adults ?? storedSearch.adults ?? 2);
+    const children = Number(searchParams.children ?? storedSearch.children ?? 0);
+    const nights = Number(searchParams.nights ?? storedSearch.nights ?? Math.max(1, Math.ceil((new Date(checkOutDate) - new Date(checkInDate)) / (1000 * 60 * 60 * 24))));
 
     const searchData = {
         location: location,
         checkIn: checkInDate,
         checkOut: checkOutDate,
-        guests: roomText,
-        nights: nights
+        nights: nights,
+        room,
+        adults,
+        children
     };
 
     const [isSticky, setIsSticky] = useState(false);
@@ -241,7 +255,7 @@ const CheckAvailability = () => {
                                 <span className="ca-rating-max">/10</span>
                             </div> */}
                             <div className="ca-rating-score">
-                                {hotel.overall_score}
+                                {hotelDetails.ratings.overall_score}
                                 <span className="ca-rating-max">/5</span> {/* Matching your 5-point scale in JSON */}
                             </div>
                             <p className="ca-rating-desc">Read location, friendly front desk staff will check and then they can store your luggage</p>
@@ -371,9 +385,8 @@ const CheckAvailability = () => {
                     </div>
                 )}
 
-                {activeTab === 'reviews' && (
+                {/* {activeTab === 'reviews' && (
                     <div className="ca-reviews-container">
-                        {/* <h3 className="ca-tab-title">Guest Reviews</h3> */}
                         {hotelDetails.reviews?.length > 0 ? (
                             hotelDetails.reviews.map((r, i) => (
                                 <div key={i} className="ca-review-card">
@@ -407,9 +420,95 @@ const CheckAvailability = () => {
                             </div>
                         )}
                     </div>
+                )} */}
+
+                {activeTab === 'reviews' && (
+                    /* Wrap in a container to align with other sections */
+                    <div className="ca-container">
+                        <div className="ca-reviews-layout">
+                            {/* Left Side: Rating Summary */}
+                            <div className="ca-ratings-summary-sidebar">
+                                <div className="ca-summary-header">
+                                    <span className="ca-big-score">{hotelDetails.ratings?.overall_score || '0.0'}</span>
+                                    <div>
+                                        {(() => {
+                                            const overallScore = hotelDetails.ratings?.overall_score || 0;
+                                            const rLabel = getRatingLabel(overallScore, 5);
+                                            return (
+                                                <div
+                                                    className="ca-score-label"
+                                                    style={{ color: rLabel.color, backgroundColor: rLabel.bg }}
+                                                >
+                                                    {rLabel.label}
+                                                </div>
+                                            );
+                                        })()}
+                                        <div className="ca-total-reviews">{reviewCount} reviews</div>
+                                    </div>
+                                </div>
+
+                                <div className="ca-category-bars">
+                                    {[
+                                        { label: 'Cleanliness', key: 'cleanliness_score' },
+                                        { label: 'Service', key: 'service_score' },
+                                        { label: 'Location', key: 'location_score' }
+                                    ].map((item) => (
+                                        <div key={item.key} className="ca-bar-row">
+                                            <div className="ca-bar-info">
+                                                <span>{item.label}</span>
+                                                <span>{hotelDetails.ratings?.[item.key]}</span>
+                                            </div>
+                                            <div className="ca-bar-bg">
+                                                <div
+                                                    className="ca-bar-fill"
+                                                    style={{ width: `${(hotelDetails.ratings?.[item.key] / 5) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Right Side: Review Cards */}
+                            <div className="ca-reviews-list-side">
+                                {hotelDetails.reviews?.length > 0 ? (
+                                    hotelDetails.reviews.map((r, i) => (
+                                        <div key={i} className="ca-review-card">
+                                            <div className="ca-review-left">
+                                                <div className="ca-reviewer-avatar">{r.reviewer_name.charAt(0)}</div>
+                                                <div className="ca-reviewer-info">
+                                                    <span className="ca-reviewer-name">{r.reviewer_name}</span>
+                                                    <span className="ca-review-date">{new Date(r.review_date).toLocaleDateString()}</span>
+                                                </div>
+                                            </div>
+                                            <div className="ca-review-right">
+                                                <div className="ca-review-rating-top">
+                                                    <div className="ca-review-rating-badge">
+                                                        <span className="ca-rating-number">{Number(r.rating).toFixed(1)}</span>
+                                                    </div>
+                                                    {(() => {
+                                                        const rLabel = getRatingLabel(r.rating, 5);
+                                                        return (
+                                                            <span
+                                                                className="ca-review-score-label"
+                                                                style={{ color: rLabel.color, backgroundColor: rLabel.bg }}
+                                                            >
+                                                                {rLabel.label}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </div>
+                                                <p className="ca-review-comment">"{r.comment}"</p>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p>No reviews yet for this property.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 )}
-
-
 
                 {/* ─── AMENITIES TAB ─── */}
                 {activeTab === 'amenities' && (
@@ -434,54 +533,54 @@ const CheckAvailability = () => {
 
                 {/* ─── POLICIES TAB ─── */}
                 {activeTab === 'policies' && (
-    <div className="ca-tab-content">
-        <h3 className="ca-tab-title">Property Policies</h3>
-        
-        <div className="ca-policies-grid">
-            {/* Cancellation Card */}
-            <div className="ca-policy-card">
-                <div className="ca-policy-header">
-                    <span className="ca-policy-icon">📅</span>
-                    <h4>Cancellation</h4>
-                </div>
-                <div className="ca-policy-body">
-                    <p className="ca-policy-text">
-                        {hotel.cancellation_policy || 'Standard cancellation rules apply.'}
-                    </p>
-                </div>
-            </div>
+                    <div className="ca-tab-content">
+                        <h3 className="ca-tab-title">Property Policies</h3>
 
-            {/* Refund Card */}
-            <div className="ca-policy-card">
-                <div className="ca-policy-header">
-                    <span className="ca-policy-icon">💰</span>
-                    <h4>Refund</h4>
-                </div>
-                <div className="ca-policy-body">
-                    <p className="ca-policy-text">
-                        {hotel.refund_policy || 'Contact the property for refund details.'}
-                    </p>
-                </div>
-            </div>
+                        <div className="ca-policies-grid">
+                            {/* Cancellation Card */}
+                            <div className="ca-policy-card">
+                                <div className="ca-policy-header">
+                                    <span className="ca-policy-icon">📅</span>
+                                    <h4>Cancellation</h4>
+                                </div>
+                                <div className="ca-policy-body">
+                                    <p className="ca-policy-text">
+                                        {hotel.cancellation_policy || 'Standard cancellation rules apply.'}
+                                    </p>
+                                </div>
+                            </div>
 
-            
+                            {/* Refund Card */}
+                            <div className="ca-policy-card">
+                                <div className="ca-policy-header">
+                                    <span className="ca-policy-icon">💰</span>
+                                    <h4>Refund</h4>
+                                </div>
+                                <div className="ca-policy-body">
+                                    <p className="ca-policy-text">
+                                        {hotel.refund_policy || 'Contact the property for refund details.'}
+                                    </p>
+                                </div>
+                            </div>
 
-            {/* Important Info Card */}
-            <div className="ca-policy-card ca-full-width">
-                <div className="ca-policy-header">
-                    <span className="ca-policy-icon">📝</span>
-                    <h4>Special Requests</h4>
-                </div>
-                <div className="ca-policy-body">
-                    <p className="ca-policy-text small">
-                        Special requests are subject to availability and cannot be guaranteed. 
-                        The property may charge additional fees for certain services or late check-outs.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-)}
+
+
+                            {/* Important Info Card */}
+                            <div className="ca-policy-card ca-full-width">
+                                <div className="ca-policy-header">
+                                    <span className="ca-policy-icon">📝</span>
+                                    <h4>Special Requests</h4>
+                                </div>
+                                <div className="ca-policy-body">
+                                    <p className="ca-policy-text small">
+                                        Special requests are subject to availability and cannot be guaranteed.
+                                        The property may charge additional fees for certain services or late check-outs.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </Fragment >
     );
