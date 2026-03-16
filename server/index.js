@@ -5,7 +5,7 @@ const cors = require('cors');
 const pool = require('./db');
 
 const PORT = process.env.PORT || 5000;
-
+import { intervalToDuration } from 'date-fns'
 app.use(cors());
 app.use(express.json());
 
@@ -315,6 +315,37 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
         res.status(500).send("Server error");
     }
 });
+
+app.post('/v1/bookings',async(req,res)=>{
+    try{
+        const{user_id,room_id,check_in_date,check_out_date,guests,first_name,last_name,email,phone_number,promo_code} = req.body
+        const avail_check = await pool.query(
+            `
+            SELECT 1,price_per_night
+            FROM room_availability ra
+            WHERE ra.room_id = $1
+            AND ra.start_date <= $2 AND ra.end_date >= $3
+            LIMIT 1
+            `,
+            [room_id,check_in_date,check_out_date]
+        )
+        if(avail_check.rowCount === 0){
+            return res.status(409).json({message:"Room not available for booking"})
+        }
+        const nights = intervalToDuration({
+            start: new Date(check_in_date),
+            end: new Date(check_out_date)
+        })
+        const total_price = avail_check.rows[0].price_per_night * (nights.days || 1)
+        await pool.query(
+            `
+            `
+        )
+    }
+    catch(err){
+        res.status(400).json({message:"An error occured while processing the request"})
+    }
+})
 
 
 app.listen(PORT, () => {

@@ -1,7 +1,10 @@
-CREATE DATABASE tripv1;
+--CREATE DATABASE tripv1;
 -- \c tripv1
-
-CREATE TYPE status_type AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED', 'REFUNDED');
+--If manually created in postgres, then no need of this line:  CREATE DATABASE tripv1;
+--Try to keep this name consistent
+CREATE TYPE status_type AS ENUM ('INITIATED', 'PAYMENT_PENDING', 'CONFIRMED', 'CANCELLED', 'REFUNDED', 'EXPIRED');
+CREATE TYPE payment_status_type AS ENUM ('SUCCESS', 'FAILED', 'REFUNDED');
+CREATE TYPE refund_status_type AS ENUM ('COMPLETED', 'PROCESSING', 'NOT_ELIGIBLE');
 CREATE TYPE user_type AS ENUM ('REGISTERED', 'GUEST', 'ADMIN');
 
 
@@ -67,6 +70,16 @@ CREATE TABLE policies (
     refund_policy TEXT
 );
 
+CREATE TABLE promo_codes (
+    promo_code_id SERIAL PRIMARY KEY,
+    code VARCHAR(64) UNIQUE NOT NULL,
+    description TEXT,
+    discount_percentage DECIMAL(5, 2),
+    start_date DATE,
+    end_date DATE,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
 
 CREATE TABLE bookings (
     booking_id SERIAL PRIMARY KEY,
@@ -75,8 +88,25 @@ CREATE TABLE bookings (
     booking_date DATE DEFAULT CURRENT_DATE,
     check_in_date DATE NOT NULL,
     check_out_date DATE NOT NULL,
-    booking_status status_type DEFAULT 'PENDING',
-    total_amount DECIMAL(10, 2) NOT NULL
+    booking_status status_type DEFAULT 'INITIATED',
+    total_amount DECIMAL(10, 2) NOT NULL,
+    currency VARCHAR(8) DEFAULT 'USD',
+    guests INTEGER NOT NULL,
+    expires_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    cancelled_at TIMESTAMP,
+    special_requests TEXT,
+    promo_code VARCHAR(64),
+    FOREIGN KEY (promo_code) REFERENCES promo_codes(code)
+);
+
+CREATE TABLE booking_contacts (
+    contact_id SERIAL PRIMARY KEY,
+    booking_id INTEGER REFERENCES bookings(booking_id) ON DELETE CASCADE,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone_number VARCHAR(30) NOT NULL
 );
 
 CREATE TABLE guest_details (
@@ -92,7 +122,8 @@ CREATE TABLE payments (
     payment_id SERIAL PRIMARY KEY,
     booking_id INTEGER REFERENCES bookings(booking_id),
     amount DECIMAL(10, 2) NOT NULL,
-    payment_status status_type DEFAULT 'PENDING', 
+    payment_status payment_status_type DEFAULT 'FAILED', 
+    payment_token VARCHAR(255),
     payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -100,7 +131,7 @@ CREATE TABLE refunds (
     refund_id SERIAL PRIMARY KEY,
     payment_id INTEGER REFERENCES payments(payment_id),
     refund_amount DECIMAL(10, 2) NOT NULL,
-    refund_status status_type DEFAULT 'PENDING',
+    refund_status refund_status_type DEFAULT 'PROCESSING',
     processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -177,17 +208,22 @@ INSERT INTO deals (room_id, description, discount_percentage, start_date, end_da
 INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES 
 (1, 'Free cancellation up to 7 days before check-in', 'Full refund for cancellations 7+ days prior');
 
-INSERT INTO bookings (user_id, room_id, check_in_date, check_out_date, booking_status, total_amount) VALUES 
-(1, 1, '2024-02-15', '2024-02-18', 'CONFIRMED', 750.00);
+INSERT INTO promo_codes (code, description, discount_percentage, start_date, end_date, is_active) VALUES
+('WELCOME10', 'Welcome discount for first booking', 10.00, '2026-01-01', '2026-12-31', TRUE),
+('SPRING20', 'Spring season offer', 20.00, '2026-03-01', '2026-05-31', TRUE),
+('EXPIRED5', 'Expired code for testing', 5.00, '2025-01-01', '2025-12-31', FALSE);
+
+INSERT INTO bookings (user_id, room_id, check_in_date, check_out_date, booking_status, total_amount, guests, promo_code) VALUES 
+(1, 1, '2024-02-15', '2024-02-18', 'CONFIRMED', 750.00, 2, 'WELCOME10');
 
 INSERT INTO guest_details (booking_id, guest_name, age, gender) VALUES 
 (1, 'Alice Johnson', 30, 'Female');
 
 INSERT INTO payments (booking_id, amount, payment_status) VALUES 
-(1, 750.00, 'CONFIRMED');
+(1, 750.00, 'SUCCESS');
 
 INSERT INTO refunds (payment_id, refund_amount, refund_status) VALUES 
-(1, 0.00, 'PENDING');
+(1, 0.00, 'PROCESSING');
 
 INSERT INTO reviews (user_id, hotel_id, comment, rating) VALUES 
 (1, 1, 'Excellent stay, highly recommend!', 5);
@@ -195,7 +231,7 @@ INSERT INTO reviews (user_id, hotel_id, comment, rating) VALUES
 INSERT INTO favourites (user_id, hotel_id) VALUES 
 (1, 1);
 
-INSERT INTO deals (hotel_id, description, discount_percentage, start_date, end_date) VALUES 
+INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
 (1, 'Early bird discount', 15.00, '2026-01-01', '2026-04-28');
 
 INSERT INTO hotels (name, location, description, image_url) VALUES 
