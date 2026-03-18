@@ -1,5 +1,5 @@
 import React, { Fragment, useEffect, useState } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import RoomCard from './RoomCard';
 import AvailabilityBar from './AvailabilityBar';
@@ -19,6 +19,7 @@ const TABS = [
 
 
 const CheckAvailability = () => {
+    const navigate = useNavigate();
     const locationState = useLocation();
     const searchParams = locationState.state || {};
 
@@ -148,6 +149,20 @@ const CheckAvailability = () => {
         document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' });
         setActiveTab('reviews');
     }
+
+    const handleReserve = (room) => {
+        navigate('/bookings/new', {
+            state: {
+                hotel,
+                room,
+                checkInDate,
+                checkOutDate,
+                nights,
+                adults,
+                children
+            }
+        });
+    };
 
     return (
         <Fragment>
@@ -377,11 +392,17 @@ const CheckAvailability = () => {
                         {/* Room Cards */}
                         {rooms.length > 0 ? (
                             rooms.map((room) => (
-                                <RoomCard key={room.room_id} room={room} amenities={amenities} />
+                                <RoomCard
+                                    key={room.room_id}
+                                    room={room}
+                                    amenities={amenities}
+                                    onReserve={handleReserve}
+                                />
                             ))
                         ) : (
                             <p className="ca-no-rooms">No rooms available at the moment.</p>
                         )}
+
                     </div>
                 )}
 

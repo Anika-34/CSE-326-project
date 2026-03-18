@@ -8,6 +8,7 @@ import HotelList from './components/HotelList';
 import CheckAvailability from './components/CheckAvailability';
 import PaymentPage from './components/PaymentPage';  
 import Test from './components/test';
+import BookingPage from './components/BookingPage';
 
 
 const App = () => {
@@ -17,6 +18,7 @@ const App = () => {
                 <Route path="/" element={<Test/>} />
                 <Route path="/hotels/search" element={<HotelList />} />
                 <Route path="/hotels/details/:hotel_id" element={<CheckAvailability />} />
+                <Route path="/bookings/new" element={<BookingPage />} />
                 <Route path="/payment" element={<PaymentPage />} /> 
                 
             </Routes>

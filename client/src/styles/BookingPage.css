@@ -1,0 +1,162 @@
+.booking-shell {
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+
+.booking-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.booking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.booking-header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.booking-header p {
+  margin: 6px 0 0 0;
+  color: #666;
+}
+
+.booking-steps {
+  display: flex;
+  gap: 8px;
+}
+
+.booking-step {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #d0d0d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #999;
+}
+
+.booking-step.active {
+  border-color: #0071c2;
+  color: #0071c2;
+}
+
+.booking-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.booking-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e6e6e6;
+  margin-bottom: 20px;
+}
+
+.booking-card h2 {
+  margin-top: 0;
+}
+
+.booking-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.booking-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.booking-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.booking-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #444;
+}
+
+.booking-field input,
+.booking-field textarea {
+  border: 1px solid #d8d8d8;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.booking-error {
+  background: #ffeaea;
+  color: #b00020;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.booking-cta {
+  background: #0071c2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.booking-cta:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.booking-summary .summary-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid #e6e6e6;
+  margin-bottom: 20px;
+}
+
+.summary-hotel {
+  margin: 6px 0 12px 0;
+  font-weight: 700;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #444;
+}
+
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  margin-top: 12px;
+}
+
+@media (max-width: 992px) {
+  .booking-grid {
+    grid-template-columns: 1fr;
+  }
+  .booking-row {
+    grid-template-columns: 1fr;
+  }
+}
