@@ -4,6 +4,7 @@ import React, { Fragment, useEffect, useState } from "react";
 const Test = () => {
     const [users, setUsers] = useState([]);
     const apiBaseUrl = process.env.REACT_APP_API_URL || '';
+    console.log('API Base URL:', apiBaseUrl);
 
     const getUsers = async () => {
         try {
