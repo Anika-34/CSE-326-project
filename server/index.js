@@ -164,6 +164,7 @@ app.get('/v1/hotels/location-suggestions', async (req, res) => {
 app.get('/v1/hotels/search', async (req, res) => {
     try {
         const { location, check_in_date, check_out_date } = req.query;
+        console.log('Search query params:', req.query);
 
         const result = await pool.query(
             `
@@ -296,6 +297,7 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
         const { hotelId } = req.params;
         const parsedHotelId = Number(hotelId);
 
+        console.log('Hotel ID:', parsedHotelId);
         if (!Number.isInteger(parsedHotelId) || parsedHotelId <= 0) {
             return res.status(400).json({ error: 'Invalid hotelId' });
         }
@@ -431,9 +433,10 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
     }
 });
 
-app.post('/v1/bookings',requireAuth,requireUser,async(req,res)=>{
+app.post('/v1/bookings', async (req, res) => {
+    console.log('Booking request body:', req.body);
     try{
-        const{room_id,check_in_date,check_out_date,guests,first_name,last_name,email,phone_number,promo_code,special_requests} = req.body
+        const { user_id, room_id, check_in_date, check_out_date, guests, first_name, last_name, email, phone_number, promo_code, special_requests } = req.body;
 
         if (!room_id || !check_in_date || !check_out_date || !guests || !first_name || !last_name || !email || !phone_number) {
             return res.status(400).json({ message: "Missing required fields" });
@@ -504,7 +507,7 @@ app.post('/v1/bookings',requireAuth,requireUser,async(req,res)=>{
                 )
                 RETURNING booking_id, booking_status, total_amount, currency, expires_at
                 `,
-                [req.user.user_id, room_id, check_in_date, check_out_date, totalPrice, guests, expiresAt, special_requests || null, promo_code || null]
+                [user_id || null, room_id, check_in_date, check_out_date, totalPrice, guests, expiresAt, special_requests || null, promo_code || null]
             );
             const booking = bookingResult.rows[0];
             await client.query(

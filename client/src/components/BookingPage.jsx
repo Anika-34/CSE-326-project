@@ -94,7 +94,7 @@ const BookingPage = () => {
         throw new Error(message);
       }
 
-      navigate(`/payment?booking_id=${encodeURIComponent(body.booking_id)}`);
+      navigate('/payment');
     } catch (err) {
       setErrorMessage(err.message || 'Unable to create booking right now.');
     } finally {
@@ -125,7 +125,7 @@ const BookingPage = () => {
         <div className="booking-grid">
           <section className="booking-main">
             <div className="booking-card">
-              <h2>Who’s staying?</h2>
+              <h2>Whoï¿½s staying?</h2>
               <form className="booking-form" onSubmit={handleSubmit}>
                 <div className="booking-row">
                   <div className="booking-field">
@@ -187,7 +187,7 @@ const BookingPage = () => {
 
                 {errorMessage && <div className="booking-error">{errorMessage}</div>}
 
-                <button className="booking-cta" disabled={submitting}>
+                <button type="submit" className="booking-cta" disabled={submitting}>
                   {submitting ? 'Creating reservation...' : 'Proceed to Pay'}
                 </button>
               </form>
