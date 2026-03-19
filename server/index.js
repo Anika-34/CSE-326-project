@@ -3,15 +3,129 @@ const app = express();
 require('dotenv').config();
 const cors = require('cors');
 const pool = require('./db');
+const jwt = require('jsonwebtoken');
 
 const PORT = process.env.PORT || 5000;
-
 app.use(cors());
 app.use(express.json());
 
 // routes
 
+const JWT_SECRET = process.env.JWT_SECRET || 'jwt_secret';
+
+const requireAuth = (req, res, next) => {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ')
+        ? authHeader.slice(7)
+        : null;
+
+    if (!token) {
+        return res.status(401).json({ error: 'Missing or invalid token' });
+    }
+
+    try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        req.user = payload;
+        return next();
+    } catch (err) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+};
+
+const requireAdmin = (req, res, next) => {
+    if (!req.user || req.user.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'Forbidden — admin access required' });
+    }
+    return next();
+};
+
+const requireUser = (req, res, next) => {
+    if (!req.user || req.user.role === 'ADMIN') {
+        return res.status(403).json({ error: 'Forbidden — user access only' });
+    }
+    return next();
+};
+
 // users
+
+// minimal login (plain password match for seed/demo)
+app.post('/v1/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body || {};
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password required' });
+        }
+
+        const result = await pool.query(
+            'SELECT user_id, email, password, role FROM users WHERE email = $1',
+            [email]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const user = result.rows[0];
+
+        if (String(user.password) !== String(password)) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const token = jwt.sign(
+            { user_id: user.user_id, email: user.email, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '2h' }
+        );
+
+        return res.json({ token });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// minimal signup (plain password for demo)
+app.post('/v1/auth/signup', async (req, res) => {
+    try {
+        const { name, email, password } = req.body || {};
+        if (!name || !email || !password) {
+            return res.status(400).json({ error: 'Name, email, and password required' });
+        }
+
+        const existing = await pool.query(
+            'SELECT 1 FROM users WHERE email = $1',
+            [email]
+        );
+        if (existing.rowCount > 0) {
+            return res.status(409).json({ error: 'Email already registered' });
+        }
+
+        const insertResult = await pool.query(
+            `
+            INSERT INTO users (name, email, password, role)
+            VALUES ($1, $2, $3, 'REGISTERED')
+            RETURNING user_id, name, email, role
+            `,
+            [name, email, String(password)]
+        );
+
+        const createdUser = insertResult.rows[0];
+        const token = jwt.sign(
+            { user_id: createdUser.user_id, email: createdUser.email, role: createdUser.role },
+            JWT_SECRET,
+            { expiresIn: '2h' }
+        );
+
+        return res.status(201).json({
+            message: 'Signup successful',
+            user: createdUser,
+            token
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Server error' });
+    }
+});
 
 // dummy test
 app.get('/v1/dummy', async (req, res) => {
@@ -259,6 +373,7 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
         WHERE r.hotel_id = $1
             AND ra.start_date <= CURRENT_DATE
             AND ra.end_date >= CURRENT_DATE
+            AND ra.is_available = TRUE
         `;
 
         const reviewQuery = `
@@ -316,6 +431,295 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
     }
 });
 
+app.post('/v1/bookings',requireAuth,requireUser,async(req,res)=>{
+    try{
+        const{room_id,check_in_date,check_out_date,guests,first_name,last_name,email,phone_number,promo_code,special_requests} = req.body
+
+        if (!room_id || !check_in_date || !check_out_date || !guests || !first_name || !last_name || !email || !phone_number) {
+            return res.status(400).json({ message: "Missing required fields" });
+        }
+        const checkIn = new Date(check_in_date);
+        const checkOut = new Date(check_out_date);
+        const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+        if (!Number.isFinite(nights) || nights <= 0) {
+            return res.status(400).json({ message: "Invalid check-in/check-out dates" });
+        }
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const availCheck = await client.query(
+                `
+                SELECT r.price_per_night
+                FROM room_availability ra
+                JOIN rooms r ON r.room_id = ra.room_id
+                WHERE ra.room_id = $1
+                LIMIT 1
+                `,
+                [room_id]
+            );
+            // if (availCheck.rowCount === 0) {
+            //     await client.query('ROLLBACK');
+            //     return res.status(409).json({ message: "Room not available for booking" });
+            // }
+            console.log(check_in_date,check_out_date)
+            await client.query(
+                `
+                UPDATE room_availability
+                SET is_available = FALSE,start_date = $2,end_date = $3
+                WHERE room_id = $1
+                `,
+                [room_id,check_in_date,check_out_date]
+            )
+            const pricePerNight = Number(availCheck.rows[0].price_per_night);
+            let discountPercentage = 0;
+            if (promo_code) {
+                const promoResult = await client.query(
+                    `
+                    SELECT discount_percentage
+                    FROM promo_codes
+                    WHERE code = $1
+                      AND is_active = TRUE
+                      AND (start_date IS NULL OR start_date <= CURRENT_DATE)
+                      AND (end_date IS NULL OR end_date >= CURRENT_DATE)
+                    `,
+                    [promo_code]
+                );
+                if (promoResult.rowCount > 0) {
+                    discountPercentage = Number(promoResult.rows[0].discount_percentage) || 0;
+                }
+            }
+            const baseTotal = pricePerNight * nights;
+            const totalPrice = baseTotal * (1 - discountPercentage / 100);
+            const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+            const bookingResult = await client.query(
+                `
+                INSERT INTO bookings (
+                    user_id, room_id, check_in_date, check_out_date,
+                    booking_status, total_amount, currency, guests,
+                    expires_at, special_requests, promo_code
+                ) VALUES (
+                    $1, $2, $3, $4,
+                    'INITIATED', $5, 'USD', $6,
+                    $7, $8, $9
+                )
+                RETURNING booking_id, booking_status, total_amount, currency, expires_at
+                `,
+                [req.user.user_id, room_id, check_in_date, check_out_date, totalPrice, guests, expiresAt, special_requests || null, promo_code || null]
+            );
+            const booking = bookingResult.rows[0];
+            await client.query(
+                `
+                INSERT INTO booking_contacts (
+                    booking_id, first_name, last_name, email, phone_number
+                ) VALUES ($1, $2, $3, $4, $5)
+                `,
+                [booking.booking_id, first_name, last_name, email, phone_number]
+            );
+            await client.query('COMMIT');
+            return res.status(201).json({
+                booking_id: String(booking.booking_id),
+                status: booking.booking_status,
+                total_price: Number(booking.total_amount),
+                currency: booking.currency,
+                expires_at: booking.expires_at
+            });
+        } catch (err) {
+            await client.query('ROLLBACK');
+            console.error(err);
+            return res.status(400).json({ message: "An error occured while processing the request" });
+        } finally {
+            client.release();
+        }
+    }
+    catch(err){
+        console.log(err)
+        res.status(400).json({message:"An error occured while processing the request"})
+    }
+})
+
+app.get('/v1/bookings/:booking_id',requireAuth,requireUser,async(req,res)=>{
+    try{
+        const client = await pool.connect();
+        try{
+            await client.query('BEGIN')
+            const {booking_id} = req.params
+            const result = await client.query(
+                `
+                SELECT *
+                FROM bookings b
+                JOIN booking_contacts bc on b.booking_id = bc.booking_id 
+                JOIN rooms r on b.room_id = r.room_id 
+                JOIN hotels h on r.hotel_id = h.hotel_id
+                WHERE b.booking_id = $1
+                `
+                ,[booking_id]
+            )
+            if(result.rowCount === 0){
+                return res.status(404).json({
+                    message:"Booking not found"
+                })
+            }
+            const booking_info = result.rows[0]
+            if (booking_info.user_id !== req.user.user_id) {
+                return res.status(403).json({ message: "Forbidden — user does not own this booking" })
+            }
+            return res.status(200).json({
+                booking_id: String(booking_info.booking_id),
+                hotel_name: booking_info.name,
+                room_type: booking_info.roomType,
+                check_in_date:booking_info.check_in_date,
+                check_out_date: booking_info.check_out_date,
+                guests: booking_info.guests,
+                status: booking_info.booking_status,
+                total_price: Number(booking_info.total_amount),
+                currency: booking_info.currency,
+                expires_at: booking_info.expires_at
+            })
+        }
+        catch(err1){
+           await client.query('ROLLBACK');
+           console.error(err1);
+           return res.status(400).json({ message: "An error occured while processing the request" })
+        }
+    }
+    catch(err){
+        return res.status(400).json({
+            message: "An error occured while processing the request"
+        })
+    }
+})
+
+app.get('/v1/admin/bookings',requireAuth,requireAdmin,async(req,res)=>{
+    try {
+        const { status, hotel_id, from_date, to_date, page } = req.query;
+        const pageNumber = Math.max(1, Number(page) || 1);
+        const limit = 10;
+        const offset = (pageNumber - 1) * limit;
+
+        const where = [];
+        const values = [];
+
+        if (status) {
+            values.push(status);
+            where.push(`b.booking_status = $${values.length}`);
+        }
+
+        if (hotel_id) {
+            values.push(Number(hotel_id));
+            where.push(`h.hotel_id = $${values.length}`);
+        }
+
+        if (from_date) {
+            values.push(from_date);
+            where.push(`b.check_in_date >= $${values.length}`);
+        }
+
+        if (to_date) {
+            values.push(to_date);
+            where.push(`b.check_out_date <= $${values.length}`);
+        }
+
+        const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+        const countResult = await pool.query(
+            `
+            SELECT COUNT(*)::int AS total
+            FROM bookings b
+            JOIN rooms r ON b.room_id = r.room_id
+            JOIN hotels h ON r.hotel_id = h.hotel_id
+            ${whereClause}
+            `,
+            values
+        );
+
+        const listResult = await pool.query(
+            `
+            SELECT 
+                b.booking_id,
+                b.user_id,
+                h.hotel_id,
+                b.room_id,
+                b.booking_status AS status,
+                b.total_amount AS total_price,
+                b.currency,
+                b.check_in_date,
+                b.check_out_date,
+                b.created_at
+            FROM bookings b
+            JOIN rooms r ON b.room_id = r.room_id
+            JOIN hotels h ON r.hotel_id = h.hotel_id
+            ${whereClause}
+            ORDER BY b.created_at DESC
+            LIMIT ${limit} OFFSET ${offset}
+            `,
+            values
+        );
+
+        return res.status(200).json({
+            page: pageNumber,
+            total_pages: Math.ceil(countResult.rows[0].total / limit),
+            total_bookings: countResult.rows[0].total,
+            bookings: listResult.rows
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Server error' });
+    }
+})
+
+app.get('/v1/admin/bookings/:booking_id',requireAuth,requireAdmin,async(req,res)=>{
+    try{
+        const client = await pool.connect();
+        try{
+            await client.query('BEGIN')
+            const {booking_id} = req.params
+            const result = await client.query(
+                `
+                SELECT *
+                FROM bookings b
+                JOIN booking_contacts bc on b.booking_id = bc.booking_id 
+                JOIN rooms r on b.room_id = r.room_id 
+                JOIN hotels h on r.hotel_id = h.hotel_id
+                WHERE b.booking_id = $1
+                `
+                ,[booking_id]
+            )
+            if(result.rowCount === 0){
+                return res.status(404).json({
+                    message:"Booking not found"
+                })
+            }
+            const booking_info = result.rows[0]
+            return res.status(200).json({
+                booking_id: String(booking_info.booking_id),
+                first_name:booking_info.first_name,
+                last_name:booking_info.last_name,
+                email:booking_info.email,
+                phone_number:booking_info.phone_number,
+                hotel_name: booking_info.name,
+                room_type: booking_info.roomType,
+                check_in_date:booking_info.check_in_date,
+                check_out_date: booking_info.check_out_date,
+                guests: booking_info.guests,
+                status: booking_info.booking_status,
+                total_price: Number(booking_info.total_amount),
+                currency: booking_info.currency,
+                cancellation_time:booking_info.cancellation_at,
+                
+            })
+        }
+        catch(err1){
+           await client.query('ROLLBACK');
+           console.error(err1);
+           return res.status(400).json({ message: "An error occured while processing the request" })
+        }
+    }
+    catch(err){
+        return res.status(400).json({
+            message: "An error occured while processing the request"
+        })
+    }
+})
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

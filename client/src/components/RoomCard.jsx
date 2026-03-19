@@ -1,4 +1,4 @@
-const RoomCard = ({ room, amenities }) => {
+const RoomCard = ({ room, amenities, onReserve }) => {
   // const [expanded, setExpanded] = useState(false);
   const roomAmenities = amenities.filter(a => a.room_id === room.room_id);
 
@@ -136,7 +136,12 @@ const RoomCard = ({ room, amenities }) => {
 
           <p style={styles.totalFees}>Total (incl. taxes & fees): US${totalWithFees}</p>
 
-          <button style={styles.reserveBtn}>Reserve</button>
+          <button
+            style={styles.reserveBtn}
+            onClick={() => onReserve && onReserve(room)}
+          >
+            Reserve
+          </button>
         </div>
       </div>
     </div>
