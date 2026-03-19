@@ -358,6 +358,39 @@ INSERT INTO reviews (user_id, hotel_id, comment, rating) VALUES
 (3, 4, 'Amazing views and peaceful atmosphere. The experience was incredible and I would definitely stay here again.', 5),
 (1, 4, 'Great for nature lovers! The hiking trails are fantastic and the staff was very helpful throughout my stay.', 5);
 
+INSERT INTO hotels (name, location, description, image_url) VALUES 
+('Lakeside Retreat', 'New Jersey', 'Tranquil retreat by the lake with beautiful views', 'https://picsum.photos/400/300');
+
+INSERT INTO hotel_ratings (hotel_id, cleanliness_score, service_score, location_score, overall_score) VALUES 
+(5, 4.6, 4.4, 4.9, 4.63);
+
+INSERT INTO rooms (hotel_id, room_type, price_per_night, capacity) VALUES 
+(5, 'Lakeside Room', 220.00, 2);
+
+INSERT INTO amenities (name, description, is_chargeable, category) VALUES 
+('Boat Rentals', 'Rent boats to explore the lake', TRUE, 'Recreation');
+
+INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
+(7, 8); 
+
+INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES 
+(5, 'Free cancellation up to 10 days before check-in', 'Full refund for cancellations 10+ days prior');
+
+INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
+(7, 'Lakeside getaway deal', 15.00, '2026-02-01', '2026-02-28');
+
+INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
+(7, '2026-02-15', '2026-02-18');
+
+INSERT INTO surroundings (hotel_id, name, description) VALUES 
+(5, 'Lakeside Park', 'Park with walking trails and picnic areas along the lake'),
+(5, 'Fishing Pier', 'Pier for fishing and enjoying the lake views');
+
+INSERT INTO reviews (user_id, hotel_id, comment, rating) VALUES 
+(2, 5, 'Peaceful retreat with stunning lake views. The boat rentals were a nice touch and made our stay even more enjoyable.', 5),
+(3, 5, 'Beautiful location but the rooms could use some updating. Overall, a great place to relax and unwind.', 4),
+(1, 5, 'Amazing experience! The staff was friendly and the surroundings were breathtaking. I would definitely recommend this hotel to anyone looking for a tranquil getaway.', 5);
+
 
 
 -- delete --
