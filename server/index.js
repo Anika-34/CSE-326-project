@@ -51,6 +51,7 @@ const requireUser = (req, res, next) => {
 // minimal login (plain password match for seed/demo)
 app.post('/v1/auth/login', async (req, res) => {
     try {
+        console.log('Login attempt:', req.body);
         const { email, password } = req.body || {};
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password required' });
@@ -61,6 +62,7 @@ app.post('/v1/auth/login', async (req, res) => {
             [email]
         );
 
+        console.log('DB query result:', result.rows);
         if (result.rowCount === 0) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
@@ -76,8 +78,11 @@ app.post('/v1/auth/login', async (req, res) => {
             JWT_SECRET,
             { expiresIn: '2h' }
         );
+        // console.log('token', token)
 
-        return res.json({ token });
+        return res.json({ token: token,
+            user_id: user.user_id
+         });
     } catch (err) {
         console.error(err);
         return res.status(500).json({ error: 'Server error' });
@@ -433,7 +438,8 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
 
 app.post('/v1/bookings',requireAuth,requireUser,async(req,res)=>{
     try{
-        const{room_id,check_in_date,check_out_date,guests,first_name,last_name,email,phone_number,promo_code,special_requests} = req.body
+        console.log('Received booking request:', req.body);
+        const{user_id, room_id,check_in_date,check_out_date,guests,first_name,last_name,email,phone_number,promo_code,special_requests} = req.body
 
         if (!room_id || !check_in_date || !check_out_date || !guests || !first_name || !last_name || !email || !phone_number) {
             return res.status(400).json({ message: "Missing required fields" });
@@ -504,7 +510,7 @@ app.post('/v1/bookings',requireAuth,requireUser,async(req,res)=>{
                 )
                 RETURNING booking_id, booking_status, total_amount, currency, expires_at
                 `,
-                [req.user.user_id, room_id, check_in_date, check_out_date, totalPrice, guests, expiresAt, special_requests || null, promo_code || null]
+                [user_id, room_id, check_in_date, check_out_date, totalPrice, guests, expiresAt, special_requests || null, promo_code || null]
             );
             const booking = bookingResult.rows[0];
             await client.query(
@@ -515,12 +521,13 @@ app.post('/v1/bookings',requireAuth,requireUser,async(req,res)=>{
                 `,
                 [booking.booking_id, first_name, last_name, email, phone_number]
             );
+            console.log('Booking created with ID:', booking.booking_id);
             await client.query('COMMIT');
             return res.status(201).json({
                 booking_id: String(booking.booking_id),
                 status: booking.booking_status,
                 total_price: Number(booking.total_amount),
-                currency: booking.currency,
+                // currency: booking.currency,
                 expires_at: booking.expires_at
             });
         } catch (err) {

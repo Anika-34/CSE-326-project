@@ -70,7 +70,7 @@ const BookingPage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: null,
+          user_id: localStorage.getItem('userId'),
           room_id: room.room_id,
           check_in_date: checkInDate,
           check_out_date: checkOutDate,
@@ -125,7 +125,7 @@ const BookingPage = () => {
         <div className="booking-grid">
           <section className="booking-main">
             <div className="booking-card">
-              <h2>Who’s staying?</h2>
+              <h2>Who's staying?</h2>
               <form className="booking-form" onSubmit={handleSubmit}>
                 <div className="booking-row">
                   <div className="booking-field">
