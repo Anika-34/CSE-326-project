@@ -4,10 +4,13 @@ require('dotenv').config();
 const cors = require('cors');
 const pool = require('./db');
 const jwt = require('jsonwebtoken');
+const Stripe = require('stripe');
 
 const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // routes
 
@@ -733,9 +736,23 @@ app.get('/v1/admin/bookings/:booking_id',requireAuth,requireAdmin,async(req,res)
 
 const sanitizeCardNumber = (number = '') => String(number).replace(/\s+/g, '');
 
-const verifyPaymentWithGateway = async ({ paymentMethod, cardNumber }) => {
-    // Placeholder for Stripe/other gateway integration.
-    // Example with Stripe: create & confirm PaymentIntent, then map status.
+const mapTestCardToPaymentMethod = (cardNumber) => {
+    const digits = sanitizeCardNumber(cardNumber);
+
+    const testMethodMap = {
+        '4242424242424242': 'pm_card_visa',
+        '4000000000000002': 'pm_card_chargeDeclined',
+        '4000002500003155': 'pm_card_threeDSecure2Required',
+    };
+
+    return testMethodMap[digits] || null;
+};
+
+const verifyPaymentWithGateway = async ({ paymentMethod, cardNumber, amount, cardholderName, expiryDate, cvv }) => {
+    if (!process.env.STRIPE_SECRET_KEY) {
+        throw new Error('STRIPE_SECRET_KEY not configured in environment');
+    }
+
     if (paymentMethod !== 'card') {
         return {
             isVerified: true,
@@ -744,30 +761,69 @@ const verifyPaymentWithGateway = async ({ paymentMethod, cardNumber }) => {
         };
     }
 
-    const digits = sanitizeCardNumber(cardNumber);
+    try {
+        const paymentMethodId = mapTestCardToPaymentMethod(cardNumber);
 
-    if (digits.startsWith('4242')) {
-        return {
-            isVerified: true,
-            providerStatus: 'succeeded',
-            message: 'Payment completed successfully.',
-        };
-    }
+        if (!paymentMethodId) {
+            return {
+                isVerified: false,
+                providerStatus: 'unsupported_test_card',
+                message: 'Use Stripe test cards: 4242 4242 4242 4242, 4000 0000 0000 0002, or 4000 0025 0000 3155.',
+            };
+        }
 
-    if (digits.startsWith('4000')) {
+        // Confirm PaymentIntent using Stripe test PaymentMethod IDs to avoid raw PAN APIs.
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(amount * 100), // Stripe uses cents
+            currency: 'usd',
+            payment_method: paymentMethodId,
+            payment_method_types: ['card'],
+            confirm: true,
+        });
+
+        if (paymentIntent.status === 'succeeded') {
+            return {
+                isVerified: true,
+                providerStatus: 'succeeded',
+                message: 'Payment completed successfully.',
+                transactionId: paymentIntent.id,
+            };
+        }
+
+        if (paymentIntent.status === 'requires_action') {
+            return {
+                isVerified: false,
+                providerStatus: 'requires_action',
+                message: 'Payment requires additional verification. Please complete 3D Secure.',
+            };
+        }
+
         return {
             isVerified: false,
-            providerStatus: 'declined',
-            message: 'Card was declined by issuer.',
+            providerStatus: paymentIntent.status,
+            message: `Payment ${paymentIntent.status}. Please try again or use a different card.`,
+        };
+    } catch (stripeError) {
+        console.error('Stripe error:', stripeError.message);
+
+        let message = 'Payment processing failed. Please try again.';
+
+        if (stripeError.type === 'StripeCardError') {
+            message = stripeError.message;
+        } else if (stripeError.type === 'StripeRateLimitError') {
+            message = 'Too many requests. Please try again in a moment.';
+        } else if (stripeError.type === 'StripeAuthenticationError') {
+            message = 'Authentication failed. Check your Stripe configuration.';
+        } else if (stripeError.type === 'StripeInvalidRequestError') {
+            message = 'Invalid payment details. Please check and try again.';
+        }
+
+        return {
+            isVerified: false,
+            providerStatus: 'error',
+            message,
         };
     }
-
-    // Default simulation branch until a real provider is wired.
-    return {
-        isVerified: false,
-        providerStatus: 'verification_failed',
-        message: 'Payment could not be verified.',
-    };
 };
 
 app.post('/v1/payments/process', async (req, res) => {
@@ -860,6 +916,10 @@ app.post('/v1/payments/process', async (req, res) => {
         const verification = await verifyPaymentWithGateway({
             paymentMethod: payment_method,
             cardNumber: card_number,
+            amount: expectedAmount,
+            cardholderName: cardholder_name,
+            expiryDate: expiry_date,
+            cvv,
         });
 
         const paymentStatus = verification.isVerified ? 'SUCCESS' : 'FAILED';
