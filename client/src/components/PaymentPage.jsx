@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
 import '../styles/PaymentPage.css';
-import { getSimulationHint, processMockPayment } from '../services/mockPaymentGateway';
 import {
   VisaIcon,
   MastercardIcon,
@@ -65,8 +64,12 @@ function PaymentPage() {
     adults = 2,
     children = 0,
     totalPrice = 0,
-    travelerName = ''
+    travelerName = '',
+    bookingResponse
   } = state;
+
+  const apiBaseUrl = process.env.REACT_APP_API_URL || '';
+  const bookingId = bookingResponse?.booking_id;
 
   useEffect(() => {
     if (!hotel || !room || !checkInDate || !checkOutDate) {
@@ -126,11 +129,6 @@ function PaymentPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const simulationHint = useMemo(
-    () => getSimulationHint(formData.cardNumber),
-    [formData.cardNumber]
-  );
-
   const updateField = (field, value) => {
     setFormData((previous) => ({ ...previous, [field]: value }));
   };
@@ -170,16 +168,42 @@ function PaymentPage() {
       }
     }
 
+    if (!bookingId) {
+      setErrorMessage('Booking reference is missing. Please create the booking again.');
+      return;
+    }
+
     try {
       setSubmitting(true);
-      const response = await processMockPayment({
-        amount: booking.total,
-        paymentMethod: selectedMethod,
-        cardNumber: formData.cardNumber,
+      const response = await fetch(`${apiBaseUrl}/v1/payments/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: bookingId,
+          amount: booking.total,
+          payment_method: selectedMethod,
+          card_number: formData.cardNumber,
+          cardholder_name: formData.cardholderName,
+          expiry_date: formData.expiryDate,
+          cvv: formData.cvv,
+        }),
       });
-      setPaymentResult(response);
+
+      const contentType = response.headers.get('content-type') || '';
+      const body = contentType.includes('application/json')
+        ? await response.json()
+        : await response.text();
+
+      if (!response.ok) {
+        const message = typeof body === 'string'
+          ? body
+          : body?.message || body?.error || `HTTP ${response.status}`;
+        throw new Error(message);
+      }
+
+      setPaymentResult(body);
     } catch (error) {
-      setErrorMessage('Unable to process payment right now. Try again.');
+      setErrorMessage(error.message || 'Unable to process payment right now. Try again.');
     } finally {
       setSubmitting(false);
     }
