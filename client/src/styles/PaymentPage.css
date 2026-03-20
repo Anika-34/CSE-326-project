@@ -77,17 +77,21 @@
   gap: 14px;
 }
 
-.payment-main,
-.payment-sidebar {
+.payment-main {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
 .payment-sidebar {
-  position: sticky;
-  top: 16px;
+  display: block;
+  position: relative;
   align-self: start;
+}
+
+.payment-sidebar .summary-card {
+  position: static;
+  margin-bottom: 12px;
 }
 
 .payment-card, .summary-card {
@@ -468,6 +472,10 @@
   }
 
   .payment-sidebar {
+    position: static;
+  }
+
+  .payment-sidebar .summary-card:first-child {
     position: static;
   }
 

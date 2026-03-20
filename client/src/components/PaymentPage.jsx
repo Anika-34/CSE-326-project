@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import '../styles/PaymentPage.css';
 import {
   VisaIcon,
@@ -99,10 +99,15 @@ function PaymentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [paymentResult, setPaymentResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
-  const [timeLeft, setTimeLeft] = useState('00:28:45');
+  const [timeLeft, setTimeLeft] = useState('00:30:00');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const bookingInfoRef = useRef(null);
+  const noticeCardRef = useRef(null);
+  const paymentMainRef = useRef(null);
+  const [bookingInfoStyle, setBookingInfoStyle] = useState({});
+  const [noticeCardStyle, setNoticeCardStyle] = useState({});
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -128,6 +133,95 @@ function PaymentPage() {
     }, 1000);
 
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const updateBookingInfoPosition = () => {
+      const bookingCard = bookingInfoRef.current;
+      const noticeCard = noticeCardRef.current;
+      if (!bookingCard || !noticeCard) return;
+
+      if (window.innerWidth <= 1024) {
+        setBookingInfoStyle({});
+        setNoticeCardStyle({});
+        return;
+      }
+
+      const sidebar = bookingCard.parentElement;
+      if (!sidebar) return;
+      const paymentMain = paymentMainRef.current;
+      if (!paymentMain) return;
+
+      const sidebarRect = sidebar.getBoundingClientRect();
+      const offsetTop = 20;
+      const stackGap = 12;
+      const bookingHeight = bookingCard.offsetHeight;
+      const noticeHeight = noticeCard.offsetHeight;
+      const stackHeight = bookingHeight + stackGap + noticeHeight;
+      const scrollY = window.scrollY;
+      const startY = sidebarRect.top + scrollY - offsetTop;
+
+      const footer = document.querySelector('.payment-footer');
+      const footerTop = footer
+        ? footer.getBoundingClientRect().top + scrollY
+        : Number.POSITIVE_INFINITY;
+
+      const paymentMainBottom = paymentMain.getBoundingClientRect().bottom + scrollY;
+      const stopBoundary = Math.min(footerTop, paymentMainBottom);
+
+      const stopY = stopBoundary - stackHeight - offsetTop;
+
+      if (scrollY > startY && scrollY < stopY) {
+        setBookingInfoStyle({
+          position: 'fixed',
+          top: `${offsetTop}px`,
+          left: `${sidebarRect.left}px`,
+          width: `${sidebarRect.width}px`,
+          zIndex: 30,
+        });
+
+        setNoticeCardStyle({
+          position: 'fixed',
+          top: `${offsetTop + bookingHeight + stackGap}px`,
+          left: `${sidebarRect.left}px`,
+          width: `${sidebarRect.width}px`,
+          zIndex: 29,
+        });
+        return;
+      }
+
+      if (scrollY >= stopY) {
+        const bookingTop = Math.max(0, stopY - startY);
+        setBookingInfoStyle({
+          position: 'absolute',
+          top: `${bookingTop}px`,
+          left: 0,
+          width: '100%',
+          zIndex: 30,
+        });
+
+        setNoticeCardStyle({
+          position: 'absolute',
+          top: `${bookingTop + bookingHeight + stackGap}px`,
+          left: 0,
+          width: '100%',
+          zIndex: 29,
+        });
+        return;
+      }
+
+      setBookingInfoStyle({});
+      setNoticeCardStyle({});
+    };
+
+    updateBookingInfoPosition();
+    window.addEventListener('scroll', updateBookingInfoPosition, { passive: true });
+    window.addEventListener('resize', updateBookingInfoPosition);
+
+    return () => {
+      window.removeEventListener('scroll', updateBookingInfoPosition);
+      window.removeEventListener('resize', updateBookingInfoPosition);
+    };
   }, []);
 
   const updateField = (field, value) => {
@@ -253,7 +347,7 @@ function PaymentPage() {
 
       <main className="payment-layout">
         <div className="header-shaper"></div>
-        <section className="payment-main">
+        <section className="payment-main" ref={paymentMainRef}>
           <div className="payment-card">
             <div className="payment-section-header">
               <h2>Select a Payment Method</h2>
@@ -351,7 +445,7 @@ function PaymentPage() {
         </section>
 
         <aside className="payment-sidebar">
-          <div className="summary-card">
+          <div className="summary-card" ref={bookingInfoRef} style={bookingInfoStyle}>
             <div className="sidebar-header">
               <h3>Booking Info</h3>
               <a href="#" onClick={(e) => { e.preventDefault(); setIsDetailsOpen(true); }} className="sidebar-link">Details &gt;</a>
@@ -391,7 +485,7 @@ function PaymentPage() {
             </div>
           </div>
 
-          <div className="summary-card notice-card">
+          <div className="summary-card notice-card" ref={noticeCardRef} style={noticeCardStyle}>
             <div className="sidebar-header">
               <h3>Notice</h3>
               <a href="#" onClick={(e) => { e.preventDefault(); setIsModalOpen(true); }} className="sidebar-link">Show More &gt;</a>
