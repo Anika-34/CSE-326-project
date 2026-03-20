@@ -14,6 +14,7 @@ import {
 } from './PaymentIcons';
 
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 const PAYMENT_METHODS = [
   { key: 'card', label: 'New credit/debit card' },
@@ -30,13 +31,11 @@ const METHOD_ICONS = {
   googlePay: [GooglePayIcon],
 };
 
-const BOOKING = {
-  hotelName: 'Radisson Collection Hyland Shanghai',
-  checkIn: 'Mar 10, 2026',
-  checkOut: 'Mar 11, 2026',
-  room: 1,
-  night: 1,
-  total: 90.05,
+const formatDate = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 const formatCardNumber = (value) => {
@@ -54,6 +53,39 @@ const formatExpiry = (value) => {
 
 function PaymentPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state || {};
+
+  const {
+    hotel,
+    room,
+    checkInDate,
+    checkOutDate,
+    nights = 1,
+    adults = 2,
+    children = 0,
+    totalPrice = 0,
+    travelerName = ''
+  } = state;
+
+  useEffect(() => {
+    if (!hotel || !room || !checkInDate || !checkOutDate) {
+      navigate('/hotels/search');
+    }
+  }, [hotel, room, checkInDate, checkOutDate, navigate]);
+
+  const booking = useMemo(() => ({
+    hotelName: hotel?.name || '',
+    checkIn: formatDate(checkInDate),
+    checkOut: formatDate(checkOutDate),
+    room: 1,
+    roomType: room?.room_type || '-',
+    night: Math.max(1, Number(nights) || 1),
+    guests: (Number(adults) || 0) + (Number(children) || 0),
+    total: Number(totalPrice || room?.price_per_night || 0),
+    travelerName: travelerName || 'Guest'
+  }), [hotel, room, checkInDate, checkOutDate, nights, adults, children, totalPrice, travelerName]);
+
   const [selectedMethod, setSelectedMethod] = useState('card');
   const [formData, setFormData] = useState({
     cardNumber: '',
@@ -141,7 +173,7 @@ function PaymentPage() {
     try {
       setSubmitting(true);
       const response = await processMockPayment({
-        amount: BOOKING.total,
+        amount: booking.total,
         paymentMethod: selectedMethod,
         cardNumber: formData.cardNumber,
       });
@@ -187,7 +219,7 @@ function PaymentPage() {
       </header>
 
       <main className="payment-layout">
-        <div class="header-shaper"></div>
+        <div className="header-shaper"></div>
         <section className="payment-main">
           <div className="payment-card">
             <div className="payment-section-header">
@@ -280,7 +312,7 @@ function PaymentPage() {
             <button className="confirm-button" disabled={submitting}>
               {submitting
                 ? 'Processing...'
-                : `Confirm and Pay US$${BOOKING.total.toFixed(2)}`}
+                : `Confirm and Pay US$${booking.total.toFixed(2)}`}
             </button>
           </form>
         </section>
@@ -291,30 +323,30 @@ function PaymentPage() {
               <h3>Booking Info</h3>
               <a href="#" onClick={(e) => { e.preventDefault(); setIsDetailsOpen(true); }} className="sidebar-link">Details &gt;</a>
             </div>
-            <p className="hotel-name">{BOOKING.hotelName}</p>
+            <p className="hotel-name">{booking.hotelName}</p>
             <div className="summary-grid">
               <div>
                 <span>Check-in</span>
-                <strong>{BOOKING.checkIn}</strong>
+                <strong>{booking.checkIn}</strong>
               </div>
               <div>
                 <span>Check-out</span>
-                <strong>{BOOKING.checkOut}</strong>
+                <strong>{booking.checkOut}</strong>
               </div>
               <div>
                 <span>Room</span>
-                <strong>{BOOKING.room}</strong>
+                <strong>{booking.room}</strong>
               </div>
               <div>
                 <span>Night</span>
-                <strong>{BOOKING.night}</strong>
+                <strong>{booking.night}</strong>
               </div>
             </div>
 
             <h4 className="price-section-header">Price Details</h4>
             <div className="price-line">
               <span>Prepay online</span>
-              <strong>US${BOOKING.total.toFixed(2)}</strong>
+              <strong>US${booking.total.toFixed(2)}</strong>
             </div>
             <p className="fee-warning">
               Foreign transaction fees may be charged by your card issuer.
@@ -322,7 +354,7 @@ function PaymentPage() {
             <hr />
             <div className="total-line">
               <span>Total</span>
-              <strong>US${BOOKING.total.toFixed(2)}</strong>
+              <strong>US${booking.total.toFixed(2)}</strong>
             </div>
           </div>
 
@@ -369,65 +401,53 @@ function PaymentPage() {
                     <h3>Price Details</h3>
                     <div className="price-breakdown">
                       <div className="price-row">
-                        <span>Room Rate</span>
-                        <span className="price">US$176.65</span>
-                      </div>
-                      <div className="price-row">
-                        <span>Taxes & fees</span>
-                        <span className="price">US$7.82</span>
-                      </div>
-                      <div className="price-row discount">
-                        <span>First Booking Deal</span>
-                        <span className="price">-US$27.68</span>
-                      </div>
-                      <div className="price-row discount">
-                        <span>Special Discount</span>
-                        <span className="price">-US$18.45</span>
-                      </div>
-                      <div className="price-row discount">
-                        <span>New user promo code</span>
-                        <span className="price">-US$10.00</span>
+                        <span>Room Rate ({booking.night} night{booking.night > 1 ? 's' : ''})</span>
+                        <span className="price">US${booking.total.toFixed(2)}</span>
                       </div>
                       <div className="price-row prepay-row">
                         <span>Prepay Online</span>
-                        <span className="price prepay-price">US$128.34</span>
+                        <span className="price prepay-price">US${booking.total.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="details-section">
-                    <h3>{BOOKING.hotelName}</h3>
+                    <h3>{booking.hotelName}</h3>
                     <div className="hotel-details-grid">
                       <div>
                         <span className="label">Room type</span>
-                        <span className="value">Collection Executive Twin Room</span>
+                        <span className="value">{booking.roomType}</span>
                       </div>
                       <div>
                         <span className="label">Check-in</span>
-                        <span className="value">{BOOKING.checkIn}</span>
+                        <span className="value">{booking.checkIn}</span>
                       </div>
                       <div>
                         <span className="label">Check-out</span>
-                        <span className="value">{BOOKING.checkOut}</span>
+                        <span className="value">{booking.checkOut}</span>
                       </div>
                       <div>
                         <span className="label">Room</span>
-                        <span className="value">{BOOKING.room}</span>
+                        <span className="value">{booking.room}</span>
                       </div>
                       <div>
                         <span className="label">Night</span>
-                        <span className="value">{BOOKING.night}</span>
+                        <span className="value">{booking.night}</span>
+                      </div>
+                      <div>
+                        <span className="label">Guests</span>
+                        <span className="value">{booking.guests}</span>
                       </div>
                     </div>
                     <div className="hotel-info-text">
-                      <p>Max. occupancy: 2 guests/room</p>
+                      <p>Max. occupancy: {room?.capacity || booking.guests} guests/room</p>
                       <p>Includes breakfast for 2 guests</p>
                     </div>
                   </div>
 
                   <div className="details-section">
                     <h3>Traveler Info</h3>
-                    <p className="traveler-name">Agatsuma zenitsu</p>
+                    <p className="traveler-name">{booking.travelerName}</p>
                   </div>
                 </div>
               </div>
