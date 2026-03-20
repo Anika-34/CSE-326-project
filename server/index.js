@@ -502,7 +502,7 @@ app.post('/v1/bookings', async (req, res) => {
             }
             const baseTotal = pricePerNight * nights;
             const totalPrice = baseTotal * (1 - discountPercentage / 100);
-            const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+            const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
             const bookingResult = await client.query(
                 `
                 INSERT INTO bookings (
@@ -864,7 +864,7 @@ app.post('/v1/payments/process', async (req, res) => {
 
         const bookingResult = await client.query(
             `
-            SELECT booking_id, booking_status, total_amount, expires_at
+            SELECT booking_id, room_id, booking_status, total_amount, expires_at
             FROM bookings
             WHERE booking_id = $1
             FOR UPDATE
@@ -900,6 +900,16 @@ app.post('/v1/payments/process', async (req, res) => {
                 `,
                 [booking_id]
             );
+
+            await client.query(
+                `
+                UPDATE room_availability
+                SET is_available = TRUE
+                WHERE room_id = $1
+                `,
+                [booking.room_id]
+            );
+
             await client.query('COMMIT');
             return res.status(409).json({ message: 'Booking has expired. Please book again.' });
         }
