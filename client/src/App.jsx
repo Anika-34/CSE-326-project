@@ -9,7 +9,7 @@ import CheckAvailability from './components/CheckAvailability';
 import PaymentPage from './components/PaymentPage';  
 import Test from './components/test';
 import BookingPage from './components/BookingPage';
-
+import SignIn from './components/SignIn';
 
 const App = () => {
     return <div className = "app-wrapper">
@@ -20,7 +20,7 @@ const App = () => {
                 <Route path="/hotels/details/:hotel_id" element={<CheckAvailability />} />
                 <Route path="/bookings/new" element={<BookingPage />} />
                 <Route path="/payment" element={<PaymentPage />} /> 
-                
+                <Route path="/signin" element={<SignIn />} />
             </Routes>
         </Router>
     </div>;
