@@ -102,6 +102,7 @@ function PaymentPage() {
   const [timeLeft, setTimeLeft] = useState('00:28:45');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -202,6 +203,9 @@ function PaymentPage() {
       }
 
       setPaymentResult(body);
+      if (body?.status === 'SUCCESS') {
+        setIsSuccessModalOpen(true);
+      }
     } catch (error) {
       setErrorMessage(error.message || 'Unable to process payment right now. Try again.');
     } finally {
@@ -211,6 +215,11 @@ function PaymentPage() {
 
   const gotoHome = () => {
     navigate('/');
+  };
+
+  const goToSearchHome = () => {
+    setIsSuccessModalOpen(false);
+    navigate('/hotels/search');
   };
 
   return (
@@ -490,6 +499,30 @@ function PaymentPage() {
           <p className="footer-operator">Site Operator: Trip.com Travel Singapore Pte. Ltd.</p>
         </div>
       </footer>
+
+      {isSuccessModalOpen && paymentResult?.status === 'SUCCESS' && (
+        <div className="modal-overlay" onClick={() => setIsSuccessModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Payment Successful</h2>
+              <button className="modal-close" onClick={() => setIsSuccessModalOpen(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <ul>
+                <li>Hotel: {booking.hotelName}</li>
+                <li>Check-in: {booking.checkIn}</li>
+                <li>Check-out: {booking.checkOut}</li>
+                <li>Amount paid: US${Number(paymentResult.amount || booking.total).toFixed(2)}</li>
+                <li>Payment method: {selectedMethod}</li>
+                <li>Transaction: {paymentResult.transactionId || 'N/A'}</li>
+              </ul>
+              <button className="confirm-button" type="button" onClick={goToSearchHome}>
+                Go to Home
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
