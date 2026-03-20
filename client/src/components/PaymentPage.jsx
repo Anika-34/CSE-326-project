@@ -1,6 +1,5 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import '../styles/PaymentPage.css';
-import { getSimulationHint, processMockPayment } from '../services/mockPaymentGateway';
 import {
   VisaIcon,
   MastercardIcon,
@@ -14,6 +13,7 @@ import {
 } from './PaymentIcons';
 
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 const PAYMENT_METHODS = [
   { key: 'card', label: 'New credit/debit card' },
@@ -30,13 +30,11 @@ const METHOD_ICONS = {
   googlePay: [GooglePayIcon],
 };
 
-const BOOKING = {
-  hotelName: 'Radisson Collection Hyland Shanghai',
-  checkIn: 'Mar 10, 2026',
-  checkOut: 'Mar 11, 2026',
-  room: 1,
-  night: 1,
-  total: 90.05,
+const formatDate = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 const formatCardNumber = (value) => {
@@ -54,6 +52,43 @@ const formatExpiry = (value) => {
 
 function PaymentPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state || {};
+
+  const {
+    hotel,
+    room,
+    checkInDate,
+    checkOutDate,
+    nights = 1,
+    adults = 2,
+    children = 0,
+    totalPrice = 0,
+    travelerName = '',
+    bookingResponse
+  } = state;
+
+  const apiBaseUrl = process.env.REACT_APP_API_URL || '';
+  const bookingId = bookingResponse?.booking_id;
+
+  useEffect(() => {
+    if (!hotel || !room || !checkInDate || !checkOutDate) {
+      navigate('/hotels/search');
+    }
+  }, [hotel, room, checkInDate, checkOutDate, navigate]);
+
+  const booking = useMemo(() => ({
+    hotelName: hotel?.name || '',
+    checkIn: formatDate(checkInDate),
+    checkOut: formatDate(checkOutDate),
+    room: 1,
+    roomType: room?.room_type || '-',
+    night: Math.max(1, Number(nights) || 1),
+    guests: (Number(adults) || 0) + (Number(children) || 0),
+    total: Number(totalPrice || room?.price_per_night || 0),
+    travelerName: travelerName || 'Guest'
+  }), [hotel, room, checkInDate, checkOutDate, nights, adults, children, totalPrice, travelerName]);
+
   const [selectedMethod, setSelectedMethod] = useState('card');
   const [formData, setFormData] = useState({
     cardNumber: '',
@@ -64,9 +99,15 @@ function PaymentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [paymentResult, setPaymentResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
-  const [timeLeft, setTimeLeft] = useState('00:28:45');
+  const [timeLeft, setTimeLeft] = useState('00:30:00');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const bookingInfoRef = useRef(null);
+  const noticeCardRef = useRef(null);
+  const paymentMainRef = useRef(null);
+  const [bookingInfoStyle, setBookingInfoStyle] = useState({});
+  const [noticeCardStyle, setNoticeCardStyle] = useState({});
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -94,10 +135,94 @@ function PaymentPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const simulationHint = useMemo(
-    () => getSimulationHint(formData.cardNumber),
-    [formData.cardNumber]
-  );
+  useEffect(() => {
+    const updateBookingInfoPosition = () => {
+      const bookingCard = bookingInfoRef.current;
+      const noticeCard = noticeCardRef.current;
+      if (!bookingCard || !noticeCard) return;
+
+      if (window.innerWidth <= 1024) {
+        setBookingInfoStyle({});
+        setNoticeCardStyle({});
+        return;
+      }
+
+      const sidebar = bookingCard.parentElement;
+      if (!sidebar) return;
+      const paymentMain = paymentMainRef.current;
+      if (!paymentMain) return;
+
+      const sidebarRect = sidebar.getBoundingClientRect();
+      const offsetTop = 20;
+      const stackGap = 12;
+      const bookingHeight = bookingCard.offsetHeight;
+      const noticeHeight = noticeCard.offsetHeight;
+      const stackHeight = bookingHeight + stackGap + noticeHeight;
+      const scrollY = window.scrollY;
+      const startY = sidebarRect.top + scrollY - offsetTop;
+
+      const footer = document.querySelector('.payment-footer');
+      const footerTop = footer
+        ? footer.getBoundingClientRect().top + scrollY
+        : Number.POSITIVE_INFINITY;
+
+      const paymentMainBottom = paymentMain.getBoundingClientRect().bottom + scrollY;
+      const stopBoundary = Math.min(footerTop, paymentMainBottom);
+
+      const stopY = stopBoundary - stackHeight - offsetTop;
+
+      if (scrollY > startY && scrollY < stopY) {
+        setBookingInfoStyle({
+          position: 'fixed',
+          top: `${offsetTop}px`,
+          left: `${sidebarRect.left}px`,
+          width: `${sidebarRect.width}px`,
+          zIndex: 30,
+        });
+
+        setNoticeCardStyle({
+          position: 'fixed',
+          top: `${offsetTop + bookingHeight + stackGap}px`,
+          left: `${sidebarRect.left}px`,
+          width: `${sidebarRect.width}px`,
+          zIndex: 29,
+        });
+        return;
+      }
+
+      if (scrollY >= stopY) {
+        const bookingTop = Math.max(0, stopY - startY);
+        setBookingInfoStyle({
+          position: 'absolute',
+          top: `${bookingTop}px`,
+          left: 0,
+          width: '100%',
+          zIndex: 30,
+        });
+
+        setNoticeCardStyle({
+          position: 'absolute',
+          top: `${bookingTop + bookingHeight + stackGap}px`,
+          left: 0,
+          width: '100%',
+          zIndex: 29,
+        });
+        return;
+      }
+
+      setBookingInfoStyle({});
+      setNoticeCardStyle({});
+    };
+
+    updateBookingInfoPosition();
+    window.addEventListener('scroll', updateBookingInfoPosition, { passive: true });
+    window.addEventListener('resize', updateBookingInfoPosition);
+
+    return () => {
+      window.removeEventListener('scroll', updateBookingInfoPosition);
+      window.removeEventListener('resize', updateBookingInfoPosition);
+    };
+  }, []);
 
   const updateField = (field, value) => {
     setFormData((previous) => ({ ...previous, [field]: value }));
@@ -138,16 +263,45 @@ function PaymentPage() {
       }
     }
 
+    if (!bookingId) {
+      setErrorMessage('Booking reference is missing. Please create the booking again.');
+      return;
+    }
+
     try {
       setSubmitting(true);
-      const response = await processMockPayment({
-        amount: BOOKING.total,
-        paymentMethod: selectedMethod,
-        cardNumber: formData.cardNumber,
+      const response = await fetch(`${apiBaseUrl}/v1/payments/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: bookingId,
+          amount: booking.total,
+          payment_method: selectedMethod,
+          card_number: formData.cardNumber,
+          cardholder_name: formData.cardholderName,
+          expiry_date: formData.expiryDate,
+          cvv: formData.cvv,
+        }),
       });
-      setPaymentResult(response);
+
+      const contentType = response.headers.get('content-type') || '';
+      const body = contentType.includes('application/json')
+        ? await response.json()
+        : await response.text();
+
+      if (!response.ok) {
+        const message = typeof body === 'string'
+          ? body
+          : body?.message || body?.error || `HTTP ${response.status}`;
+        throw new Error(message);
+      }
+
+      setPaymentResult(body);
+      if (body?.status === 'SUCCESS') {
+        setIsSuccessModalOpen(true);
+      }
     } catch (error) {
-      setErrorMessage('Unable to process payment right now. Try again.');
+      setErrorMessage(error.message || 'Unable to process payment right now. Try again.');
     } finally {
       setSubmitting(false);
     }
@@ -155,6 +309,11 @@ function PaymentPage() {
 
   const gotoHome = () => {
     navigate('/');
+  };
+
+  const goToSearchHome = () => {
+    setIsSuccessModalOpen(false);
+    navigate('/hotels/search');
   };
 
   return (
@@ -187,8 +346,8 @@ function PaymentPage() {
       </header>
 
       <main className="payment-layout">
-        <div class="header-shaper"></div>
-        <section className="payment-main">
+        <div className="header-shaper"></div>
+        <section className="payment-main" ref={paymentMainRef}>
           <div className="payment-card">
             <div className="payment-section-header">
               <h2>Select a Payment Method</h2>
@@ -280,41 +439,41 @@ function PaymentPage() {
             <button className="confirm-button" disabled={submitting}>
               {submitting
                 ? 'Processing...'
-                : `Confirm and Pay US$${BOOKING.total.toFixed(2)}`}
+                : `Confirm and Pay US$${booking.total.toFixed(2)}`}
             </button>
           </form>
         </section>
 
         <aside className="payment-sidebar">
-          <div className="summary-card">
+          <div className="summary-card" ref={bookingInfoRef} style={bookingInfoStyle}>
             <div className="sidebar-header">
               <h3>Booking Info</h3>
               <a href="#" onClick={(e) => { e.preventDefault(); setIsDetailsOpen(true); }} className="sidebar-link">Details &gt;</a>
             </div>
-            <p className="hotel-name">{BOOKING.hotelName}</p>
+            <p className="hotel-name">{booking.hotelName}</p>
             <div className="summary-grid">
               <div>
                 <span>Check-in</span>
-                <strong>{BOOKING.checkIn}</strong>
+                <strong>{booking.checkIn}</strong>
               </div>
               <div>
                 <span>Check-out</span>
-                <strong>{BOOKING.checkOut}</strong>
+                <strong>{booking.checkOut}</strong>
               </div>
               <div>
                 <span>Room</span>
-                <strong>{BOOKING.room}</strong>
+                <strong>{booking.room}</strong>
               </div>
               <div>
                 <span>Night</span>
-                <strong>{BOOKING.night}</strong>
+                <strong>{booking.night}</strong>
               </div>
             </div>
 
             <h4 className="price-section-header">Price Details</h4>
             <div className="price-line">
               <span>Prepay online</span>
-              <strong>US${BOOKING.total.toFixed(2)}</strong>
+              <strong>US${booking.total.toFixed(2)}</strong>
             </div>
             <p className="fee-warning">
               Foreign transaction fees may be charged by your card issuer.
@@ -322,11 +481,11 @@ function PaymentPage() {
             <hr />
             <div className="total-line">
               <span>Total</span>
-              <strong>US${BOOKING.total.toFixed(2)}</strong>
+              <strong>US${booking.total.toFixed(2)}</strong>
             </div>
           </div>
 
-          <div className="summary-card notice-card">
+          <div className="summary-card notice-card" ref={noticeCardRef} style={noticeCardStyle}>
             <div className="sidebar-header">
               <h3>Notice</h3>
               <a href="#" onClick={(e) => { e.preventDefault(); setIsModalOpen(true); }} className="sidebar-link">Show More &gt;</a>
@@ -369,65 +528,53 @@ function PaymentPage() {
                     <h3>Price Details</h3>
                     <div className="price-breakdown">
                       <div className="price-row">
-                        <span>Room Rate</span>
-                        <span className="price">US$176.65</span>
-                      </div>
-                      <div className="price-row">
-                        <span>Taxes & fees</span>
-                        <span className="price">US$7.82</span>
-                      </div>
-                      <div className="price-row discount">
-                        <span>First Booking Deal</span>
-                        <span className="price">-US$27.68</span>
-                      </div>
-                      <div className="price-row discount">
-                        <span>Special Discount</span>
-                        <span className="price">-US$18.45</span>
-                      </div>
-                      <div className="price-row discount">
-                        <span>New user promo code</span>
-                        <span className="price">-US$10.00</span>
+                        <span>Room Rate ({booking.night} night{booking.night > 1 ? 's' : ''})</span>
+                        <span className="price">US${booking.total.toFixed(2)}</span>
                       </div>
                       <div className="price-row prepay-row">
                         <span>Prepay Online</span>
-                        <span className="price prepay-price">US$128.34</span>
+                        <span className="price prepay-price">US${booking.total.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="details-section">
-                    <h3>{BOOKING.hotelName}</h3>
+                    <h3>{booking.hotelName}</h3>
                     <div className="hotel-details-grid">
                       <div>
                         <span className="label">Room type</span>
-                        <span className="value">Collection Executive Twin Room</span>
+                        <span className="value">{booking.roomType}</span>
                       </div>
                       <div>
                         <span className="label">Check-in</span>
-                        <span className="value">{BOOKING.checkIn}</span>
+                        <span className="value">{booking.checkIn}</span>
                       </div>
                       <div>
                         <span className="label">Check-out</span>
-                        <span className="value">{BOOKING.checkOut}</span>
+                        <span className="value">{booking.checkOut}</span>
                       </div>
                       <div>
                         <span className="label">Room</span>
-                        <span className="value">{BOOKING.room}</span>
+                        <span className="value">{booking.room}</span>
                       </div>
                       <div>
                         <span className="label">Night</span>
-                        <span className="value">{BOOKING.night}</span>
+                        <span className="value">{booking.night}</span>
+                      </div>
+                      <div>
+                        <span className="label">Guests</span>
+                        <span className="value">{booking.guests}</span>
                       </div>
                     </div>
                     <div className="hotel-info-text">
-                      <p>Max. occupancy: 2 guests/room</p>
+                      <p>Max. occupancy: {room?.capacity || booking.guests} guests/room</p>
                       <p>Includes breakfast for 2 guests</p>
                     </div>
                   </div>
 
                   <div className="details-section">
                     <h3>Traveler Info</h3>
-                    <p className="traveler-name">Agatsuma zenitsu</p>
+                    <p className="traveler-name">{booking.travelerName}</p>
                   </div>
                 </div>
               </div>
@@ -446,6 +593,30 @@ function PaymentPage() {
           <p className="footer-operator">Site Operator: Trip.com Travel Singapore Pte. Ltd.</p>
         </div>
       </footer>
+
+      {isSuccessModalOpen && paymentResult?.status === 'SUCCESS' && (
+        <div className="modal-overlay" onClick={() => setIsSuccessModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Payment Successful</h2>
+              <button className="modal-close" onClick={() => setIsSuccessModalOpen(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <ul>
+                <li>Hotel: {booking.hotelName}</li>
+                <li>Check-in: {booking.checkIn}</li>
+                <li>Check-out: {booking.checkOut}</li>
+                <li>Amount paid: US${Number(paymentResult.amount || booking.total).toFixed(2)}</li>
+                <li>Payment method: {selectedMethod}</li>
+                <li>Transaction: {paymentResult.transactionId || 'N/A'}</li>
+              </ul>
+              <button className="confirm-button" type="button" onClick={goToSearchHome}>
+                Go to Home
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

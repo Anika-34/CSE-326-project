@@ -123,7 +123,6 @@ CREATE TABLE payments (
     booking_id INTEGER REFERENCES bookings(booking_id),
     amount DECIMAL(10, 2) NOT NULL,
     payment_status payment_status_type DEFAULT 'FAILED', 
-    payment_token VARCHAR(255),
     payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

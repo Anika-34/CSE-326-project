@@ -35,12 +35,25 @@ const FacebookIcon = () => (
 export default function SignIn({ onClose }) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [authStep, setAuthStep] = useState("email");
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const navigate = useNavigate();
-    const handleEmailContinue = async () => {
+
+    const handleEmailContinue = () => {
         const trimmedEmail = email.trim();
 
+        if (!trimmedEmail) {
+            setErrorMessage("Email is required.");
+            return;
+        }
+
+        setErrorMessage("");
+        setAuthStep("password");
+    };
+
+    const handleSignIn = async () => {
+        const trimmedEmail = email.trim();
 
         if (!trimmedEmail || !password) {
             setErrorMessage("Email and password are required.");
@@ -125,19 +138,28 @@ export default function SignIn({ onClose }) {
                             onKeyDown={(e) => e.key === "Enter" && handleEmailContinue()}
                         />
                     </div>
-                    <div className="input-group">
-                        <input
-                            className="signin-input"
-                            type="password"
-                            placeholder="Please enter your password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleEmailContinue()}
-                        />
-                    </div>
-                    <button className="btn-email" onClick={handleEmailContinue}>
-                        {isLoading ? "Signing in..." : "Continue with Email"}
-                    </button>
+
+                    {authStep === "password" ? (
+                        <>
+                            <div className="input-group">
+                                <input
+                                    className="signin-input"
+                                    type="password"
+                                    placeholder="Please enter your password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
+                                />
+                            </div>
+                            <button className="btn-email" onClick={handleSignIn}>
+                                {isLoading ? "Signing in..." : "Sign In"}
+                            </button>
+                        </>
+                    ) : (
+                        <button className="btn-email" onClick={handleEmailContinue}>
+                            Continue with Email
+                        </button>
+                    )}
                     {errorMessage ? <p className="signin-legal">{errorMessage}</p> : null}
                 </div>
 
