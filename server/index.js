@@ -731,6 +731,177 @@ app.get('/v1/admin/bookings/:booking_id',requireAuth,requireAdmin,async(req,res)
     }
 })
 
+const sanitizeCardNumber = (number = '') => String(number).replace(/\s+/g, '');
+
+const verifyPaymentWithGateway = async ({ paymentMethod, cardNumber }) => {
+    // Placeholder for Stripe/other gateway integration.
+    // Example with Stripe: create & confirm PaymentIntent, then map status.
+    if (paymentMethod !== 'card') {
+        return {
+            isVerified: true,
+            providerStatus: 'succeeded',
+            message: `${paymentMethod} payment authorized.`,
+        };
+    }
+
+    const digits = sanitizeCardNumber(cardNumber);
+
+    if (digits.startsWith('4242')) {
+        return {
+            isVerified: true,
+            providerStatus: 'succeeded',
+            message: 'Payment completed successfully.',
+        };
+    }
+
+    if (digits.startsWith('4000')) {
+        return {
+            isVerified: false,
+            providerStatus: 'declined',
+            message: 'Card was declined by issuer.',
+        };
+    }
+
+    // Default simulation branch until a real provider is wired.
+    return {
+        isVerified: false,
+        providerStatus: 'verification_failed',
+        message: 'Payment could not be verified.',
+    };
+};
+
+app.post('/v1/payments/process', async (req, res) => {
+    const {
+        booking_id,
+        amount,
+        payment_method,
+        card_number,
+        cardholder_name,
+        expiry_date,
+        cvv,
+    } = req.body || {};
+
+    if (!booking_id || !payment_method) {
+        return res.status(400).json({ message: 'booking_id and payment_method are required.' });
+    }
+
+    if (payment_method === 'card') {
+        const cleanCard = sanitizeCardNumber(card_number);
+
+        if (cleanCard.length < 12) {
+            return res.status(400).json({ message: 'Card number must be at least 12 digits.' });
+        }
+        if (!cardholder_name || String(cardholder_name).trim().length < 3) {
+            return res.status(400).json({ message: 'Cardholder name is too short.' });
+        }
+        if (!/^\d{2}\/\d{2}$/.test(String(expiry_date || ''))) {
+            return res.status(400).json({ message: 'Expiry date must be in MM/YY format.' });
+        }
+        if (!/^\d{3,4}$/.test(String(cvv || ''))) {
+            return res.status(400).json({ message: 'CVV/CVC must be 3 or 4 digits.' });
+        }
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const bookingResult = await client.query(
+            `
+            SELECT booking_id, booking_status, total_amount, expires_at
+            FROM bookings
+            WHERE booking_id = $1
+            FOR UPDATE
+            `,
+            [booking_id]
+        );
+
+        if (bookingResult.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Booking not found.' });
+        }
+
+        const booking = bookingResult.rows[0];
+        const expectedAmount = Number(booking.total_amount);
+        const requestedAmount = Number(amount);
+
+        if (Number.isFinite(requestedAmount) && Math.abs(requestedAmount - expectedAmount) > 0.01) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'Payment amount does not match booking total.' });
+        }
+
+        if (booking.booking_status === 'CONFIRMED') {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ message: 'Booking is already paid.' });
+        }
+
+        if (booking.expires_at && new Date(booking.expires_at) < new Date()) {
+            await client.query(
+                `
+                UPDATE bookings
+                SET booking_status = 'EXPIRED'
+                WHERE booking_id = $1
+                `,
+                [booking_id]
+            );
+            await client.query('COMMIT');
+            return res.status(409).json({ message: 'Booking has expired. Please book again.' });
+        }
+
+        await client.query(
+            `
+            UPDATE bookings
+            SET booking_status = 'PAYMENT_PENDING'
+            WHERE booking_id = $1
+            `,
+            [booking_id]
+        );
+
+        const verification = await verifyPaymentWithGateway({
+            paymentMethod: payment_method,
+            cardNumber: card_number,
+        });
+
+        const paymentStatus = verification.isVerified ? 'SUCCESS' : 'FAILED';
+
+        const paymentInsert = await client.query(
+            `
+            INSERT INTO payments (booking_id, amount, payment_status)
+            VALUES ($1, $2, $3)
+            RETURNING payment_id, payment_date
+            `,
+            [booking_id, expectedAmount, paymentStatus]
+        );
+
+        await client.query(
+            `
+            UPDATE bookings
+            SET booking_status = $2
+            WHERE booking_id = $1
+            `,
+            [booking_id, verification.isVerified ? 'CONFIRMED' : 'INITIATED']
+        );
+
+        await client.query('COMMIT');
+
+        const payment = paymentInsert.rows[0];
+        return res.status(200).json({
+            status: paymentStatus,
+            transactionId: `PMT-${payment.payment_id}`,
+            booking_id: String(booking_id),
+            payment_id: payment.payment_id,
+            amount: expectedAmount,
+            message: verification.message,
+        });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error(err);
+        return res.status(500).json({ message: 'Unable to process payment right now.' });
+    } finally {
+        client.release();
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
