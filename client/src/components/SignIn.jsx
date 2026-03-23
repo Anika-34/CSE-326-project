@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import "../styles/SignIn.css";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const GoogleIcon = () => (
     <svg width="20" height="20" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -88,7 +88,8 @@ export default function SignIn({ onClose }) {
                 // console.log('Token stored in localStorage:', localStorage.getItem("authToken"));
                 // console.log('User ID stored in localStorage:', localStorage.getItem("userId"));
                 alert("Login successful!");
-                navigate("/hotels/search");
+                // TODO: Redirect to hotel search page or dashboard
+                navigate("/home");
             }
 
             if (onClose) {

@@ -7,20 +7,20 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import HotelList from './components/HotelList'; 
 import CheckAvailability from './components/CheckAvailability';
 import PaymentPage from './components/PaymentPage';  
-import Test from './components/test';
 import BookingPage from './components/BookingPage';
 import SignIn from './components/SignIn';
+import HomePage from './components/HomePage';
 
 const App = () => {
     return <div className = "app-wrapper">
         <Router>
             <Routes>
-                <Route path="/" element={<Test/>} />
+                <Route path="/home" element={<HomePage/>} />
                 <Route path="/hotels/search" element={<HotelList />} />
                 <Route path="/hotels/details/:hotel_id" element={<CheckAvailability />} />
                 <Route path="/bookings/new" element={<BookingPage />} />
                 <Route path="/payment" element={<PaymentPage />} /> 
-                <Route path="/signin" element={<SignIn />} />
+                <Route path="/" element={<SignIn />} /> 
             </Routes>
         </Router>
     </div>;

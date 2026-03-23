@@ -1,0 +1,37 @@
+name: CI/CD pipeline
+on:
+  push:
+    branches: [ main, anika-deploy ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Validate server syntax
+        working-directory: server
+        run: node --check index.js
+
+      - name: Run client tests
+        working-directory: client
+        run: npm test -- --watchAll=false --passWithNoTests

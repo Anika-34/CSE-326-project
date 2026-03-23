@@ -5,9 +5,24 @@ const cors = require('cors');
 const pool = require('./db');
 const jwt = require('jsonwebtoken');
 const Stripe = require('stripe');
+const cron = require('node-cron');
 
 const PORT = process.env.PORT || 5000;
-app.use(cors());
+
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error('Not allowed by CORS'));
+    },
+}));
 app.use(express.json());
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -135,7 +150,7 @@ app.post('/v1/auth/signup', async (req, res) => {
     }
 });
 
-// dummy test
+// dummy test 
 app.get('/v1/dummy', async (req, res) => {
     try {
         const allUsers = await pool.query('SELECT * FROM users');
@@ -191,19 +206,23 @@ app.get('/v1/hotels/search', async (req, res) => {
             JOIN rooms r ON h.hotel_id = r.hotel_id
             LEFT JOIN policies p ON h.hotel_id = p.hotel_id
             LEFT JOIN deals d ON r.room_id = d.room_id
-            JOIN room_availability ra ON r.room_id = ra.room_id
             WHERE 
                 h.location ILIKE '%' || $1 || '%'
-                AND ra.start_date <= $2
-                AND ra.end_date >= $3
-            GROUP BY 
-                h.hotel_id, h.name, h.location, h.image_url,
-                r.room_type, r.price_per_night, r.capacity,
-                p.cancellation_policy, d.discount_percentage, d.description
+                AND r.room_id IN (
+                    SELECT ra.room_id
+                    FROM room_availability ra
+                    WHERE ra.date_available >= $2  -- Check-in Date
+                    AND ra.date_available < $3   -- Check-out Date (Exclusive)
+                    AND ra.is_available = TRUE
+                    GROUP BY ra.room_id
+                    HAVING COUNT(*) = ($3::date - $2::date) -- Total nights requested
+                )
             ORDER BY h.hotel_id, r.capacity DESC;
             `,
             [location, check_in_date, check_out_date]
         );
+
+        console.log('Hotel search DB result:', result.rows);
 
         const hotelIds = [...new Set(result.rows.map(h => h.hotel_id))];
 
@@ -377,13 +396,12 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
         `;
 
         const numberOfAvailableRoomsQuery = `
-        SELECT  COUNT(*) AS available_rooms
-        FROM rooms r
-        JOIN room_availability ra ON r.room_id = ra.room_id
-        WHERE r.hotel_id = $1
-            AND ra.start_date <= CURRENT_DATE
-            AND ra.end_date >= CURRENT_DATE
-            AND ra.is_available = TRUE
+            SELECT COUNT(DISTINCT r.room_id) AS available_rooms
+            FROM rooms r
+            JOIN room_availability ra ON r.room_id = ra.room_id
+            WHERE r.hotel_id = $1
+                AND ra.date_available = CURRENT_DATE
+                AND ra.is_available = TRUE
         `;
 
         const reviewQuery = `
@@ -474,14 +492,25 @@ app.post('/v1/bookings', async (req, res) => {
             //     return res.status(409).json({ message: "Room not available for booking" });
             // }
             console.log(check_in_date,check_out_date)
+            // await client.query(
+            //     `
+            //     UPDATE room_availability
+            //     SET is_available = FALSE,start_date = $2,end_date = $3
+            //     WHERE room_id = $1
+            //     `,
+            //     [room_id,check_in_date,check_out_date]
+            // )
             await client.query(
                 `
                 UPDATE room_availability
-                SET is_available = FALSE,start_date = $2,end_date = $3
-                WHERE room_id = $1
+                SET is_available = FALSE
+                WHERE room_id = $1 
+                AND date_available >= $2 
+                AND date_available < $3
                 `,
-                [room_id,check_in_date,check_out_date]
-            )
+                [room_id, check_in_date, check_out_date]
+            );
+
             const pricePerNight = Number(availCheck.rows[0].price_per_night);
             let discountPercentage = 0;
             if (promo_code) {
@@ -549,6 +578,7 @@ app.post('/v1/bookings', async (req, res) => {
         res.status(400).json({message:"An error occured while processing the request"})
     }
 })
+
 
 app.get('/v1/bookings/:booking_id',requireAuth,requireUser,async(req,res)=>{
     try{
@@ -902,12 +932,10 @@ app.post('/v1/payments/process', async (req, res) => {
             );
 
             await client.query(
-                `
-                UPDATE room_availability
-                SET is_available = TRUE
-                WHERE room_id = $1
-                `,
-                [booking.room_id]
+                `UPDATE room_availability 
+                 SET is_available = TRUE 
+                 WHERE room_id = $1 AND start_date >= $2 AND start_date < $3`,
+                [booking.room_id, booking.check_in_date, booking.check_out_date]
             );
 
             await client.query('COMMIT');
@@ -972,6 +1000,52 @@ app.post('/v1/payments/process', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+// populating the room availability
+async function syncRoomAvailability() {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query(`
+            UPDATE room_availability 
+            SET is_available = FALSE 
+            WHERE date_available < CURRENT_DATE;
+        `);
+
+        await client.query(`
+            INSERT INTO room_availability (room_id, date_available, is_available)
+            SELECT 
+                r.room_id, 
+                d.day::date, 
+                TRUE
+            FROM rooms r
+            CROSS JOIN generate_series(
+                CURRENT_DATE, 
+                CURRENT_DATE + INTERVAL '14 days', 
+                INTERVAL '1 day'
+            ) AS d(day)
+            ON CONFLICT (room_id, date_available) DO NOTHING;
+        `);
+
+        await client.query('COMMIT');
+        console.log('Room availability synced successfully for 15 days.');
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error syncing room availability:', err);
+    } finally {
+        client.release();
+    }
+}
+
+cron.schedule('0 0 * * *', () => {
+    console.log('Running daily availability sync...');
+    syncRoomAvailability();
 });
+
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+        syncRoomAvailability();
+    });
+}
+
+module.exports = app;

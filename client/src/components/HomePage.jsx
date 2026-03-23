@@ -1,12 +1,12 @@
-import React, { Fragment, useEffect, useState } from "react";
+import React, { Fragment, useEffect, useState, useCallback } from "react";
 
 
-const Test = () => {
+const HomePage = () => {
     const [users, setUsers] = useState([]);
     const apiBaseUrl = process.env.REACT_APP_API_URL || '';
     console.log('API Base URL:', apiBaseUrl);
 
-    const getUsers = async () => {
+    const getUsers = useCallback(async () => {
         try {
             const response = await fetch(`${apiBaseUrl}/v1/dummy`);
             const data = await response.json();
@@ -15,14 +15,15 @@ const Test = () => {
         } catch (err) {
             console.error(err.message);
         }
-    }
+    }, [apiBaseUrl]);
+    
     useEffect(() => {
         getUsers();
-    }, []);
+    }, [getUsers]);
     
 
     return <Fragment>
-        <h1>Users</h1>
+        <h1>Landing page</h1>
         {users.map (user => (
             <div key={user.user_id}>
                 <p>Name: {user.name}</p>
@@ -33,4 +34,4 @@ const Test = () => {
     </Fragment>
 }
 
-export default Test;
+export default HomePage;
