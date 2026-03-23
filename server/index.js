@@ -150,7 +150,7 @@ app.post('/v1/auth/signup', async (req, res) => {
     }
 });
 
-// dummy test
+// dummy test // adding to test backenf render deployment trigger
 app.get('/v1/dummy', async (req, res) => {
     try {
         const allUsers = await pool.query('SELECT * FROM users');
