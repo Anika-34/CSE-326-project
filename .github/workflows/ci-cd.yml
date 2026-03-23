@@ -1,7 +1,7 @@
 name: CI/CD pipeline
 on:
   push:
-    branches: [ main, anika-deploy ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
