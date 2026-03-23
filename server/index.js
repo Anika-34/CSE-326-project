@@ -150,7 +150,7 @@ app.post('/v1/auth/signup', async (req, res) => {
     }
 });
 
-// dummy test // adding to test backenf render deployment trigger
+// dummy test 
 app.get('/v1/dummy', async (req, res) => {
     try {
         const allUsers = await pool.query('SELECT * FROM users');
@@ -189,36 +189,6 @@ app.get('/v1/hotels/search', async (req, res) => {
         const { location, check_in_date, check_out_date } = req.query;
         console.log('Search query params:', req.query);
 
-        // const result = await pool.query(
-        //     `
-        //     SELECT DISTINCT ON (h.hotel_id)
-        //         h.hotel_id,
-        //         h.name,
-        //         h.location,
-        //         h.image_url,
-        //         r.room_type,
-        //         r.price_per_night,
-        //         r.capacity,
-        //         p.cancellation_policy,
-        //         d.discount_percentage,
-        //         d.description AS deal_description
-        //     FROM hotels h
-        //     JOIN rooms r ON h.hotel_id = r.hotel_id
-        //     LEFT JOIN policies p ON h.hotel_id = p.hotel_id
-        //     LEFT JOIN deals d ON r.room_id = d.room_id
-        //     JOIN room_availability ra ON r.room_id = ra.room_id
-        //     WHERE 
-        //         h.location ILIKE '%' || $1 || '%'
-        //         AND ra.start_date <= $2
-        //         AND ra.end_date >= $3
-        //     GROUP BY 
-        //         h.hotel_id, h.name, h.location, h.image_url,
-        //         r.room_type, r.price_per_night, r.capacity,
-        //         p.cancellation_policy, d.discount_percentage, d.description
-        //     ORDER BY h.hotel_id, r.capacity DESC;
-        //     `,
-        //     [location, check_in_date, check_out_date]
-        // );
         const result = await pool.query(
             `
             SELECT DISTINCT ON (h.hotel_id)
@@ -425,15 +395,6 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
         WHERE hotel_id = $1
         `;
 
-        // const numberOfAvailableRoomsQuery = `
-        // SELECT  COUNT(*) AS available_rooms
-        // FROM rooms r
-        // JOIN room_availability ra ON r.room_id = ra.room_id
-        // WHERE r.hotel_id = $1
-        //     AND ra.start_date <= CURRENT_DATE
-        //     AND ra.end_date >= CURRENT_DATE
-        //     AND ra.is_available = TRUE
-        // `;
         const numberOfAvailableRoomsQuery = `
             SELECT COUNT(DISTINCT r.room_id) AS available_rooms
             FROM rooms r
@@ -531,14 +492,25 @@ app.post('/v1/bookings', async (req, res) => {
             //     return res.status(409).json({ message: "Room not available for booking" });
             // }
             console.log(check_in_date,check_out_date)
+            // await client.query(
+            //     `
+            //     UPDATE room_availability
+            //     SET is_available = FALSE,start_date = $2,end_date = $3
+            //     WHERE room_id = $1
+            //     `,
+            //     [room_id,check_in_date,check_out_date]
+            // )
             await client.query(
                 `
                 UPDATE room_availability
-                SET is_available = FALSE,start_date = $2,end_date = $3
-                WHERE room_id = $1
+                SET is_available = FALSE
+                WHERE room_id = $1 
+                AND date_available >= $2 
+                AND date_available < $3
                 `,
-                [room_id,check_in_date,check_out_date]
-            )
+                [room_id, check_in_date, check_out_date]
+            );
+            
             const pricePerNight = Number(availCheck.rows[0].price_per_night);
             let discountPercentage = 0;
             if (promo_code) {
@@ -606,119 +578,6 @@ app.post('/v1/bookings', async (req, res) => {
         res.status(400).json({message:"An error occured while processing the request"})
     }
 })
-
-// app.post('/v1/bookings', async (req, res) => {
-//     const client = await pool.connect();
-//     try {
-//         const {
-//             user_id, room_id, check_in_date, check_out_date,
-//             guests, first_name, last_name, email, phone_number,
-//             promo_code, special_requests
-//         } = req.body;
-
-//         // 1. Validation
-//         if (!room_id || !check_in_date || !check_out_date || !guests || !first_name || !last_name || !email || !phone_number) {
-//             return res.status(400).json({ message: "Missing required fields" });
-//         }
-
-//         const checkIn = new Date(check_in_date);
-//         const checkOut = new Date(check_out_date);
-//         const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
-
-//         if (nights <= 0) {
-//             return res.status(400).json({ message: "Invalid check-in/check-out dates" });
-//         }
-
-//         await client.query('BEGIN');
-
-//         // 2. Lock and Check Availability for ALL requested dates
-//         // This ensures no two people book the same dates simultaneously
-//         const availCheck = await client.query(
-//             `
-//             SELECT COUNT(*)::int as available_days, MIN(r.price_per_night) as price
-//             FROM room_availability ra
-//             JOIN rooms r ON r.room_id = ra.room_id
-//             WHERE ra.room_id = $1 
-//               AND ra.start_date >= $2 
-//               AND ra.start_date < $3
-//               AND ra.is_available = TRUE
-//             FOR UPDATE
-//             `,
-//             [room_id, check_in_date, check_out_date]
-//         );
-
-//         if (availCheck.rows[0].available_days < nights) {
-//             await client.query('ROLLBACK');
-//             return res.status(409).json({ message: "Room is no longer available for the selected dates" });
-//         }
-
-//         // 3. Mark specific dates as UNAVAILABLE
-//         await client.query(
-//             `
-//             UPDATE room_availability
-//             SET is_available = FALSE
-//             WHERE room_id = $1 
-//               AND start_date >= $2 
-//               AND start_date < $3
-//             `,
-//             [room_id, check_in_date, check_out_date]
-//         );
-
-//         // 4. Calculate Pricing & Promos
-//         const pricePerNight = Number(availCheck.rows[0].price);
-//         let discountPercentage = 0;
-//         if (promo_code) {
-//             const promoResult = await client.query(
-//                 `SELECT discount_percentage FROM promo_codes 
-//                  WHERE code = $1 AND is_active = TRUE 
-//                  AND (start_date IS NULL OR start_date <= CURRENT_DATE)
-//                  AND (end_date IS NULL OR end_date >= CURRENT_DATE)`,
-//                 [promo_code]
-//             );
-//             if (promoResult.rowCount > 0) {
-//                 discountPercentage = Number(promoResult.rows[0].discount_percentage);
-//             }
-//         }
-
-//         const totalPrice = (pricePerNight * nights) * (1 - discountPercentage / 100);
-//         const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 min expiry
-
-//         // 5. Insert Booking
-//         const bookingResult = await client.query(
-//             `INSERT INTO bookings (
-//                 user_id, room_id, check_in_date, check_out_date,
-//                 booking_status, total_amount, guests, expires_at, 
-//                 special_requests, promo_code
-//             ) VALUES ($1, $2, $3, $4, 'INITIATED', $5, $6, $7, $8, $9)
-//             RETURNING booking_id, booking_status, total_amount, expires_at`,
-//             [user_id, room_id, check_in_date, check_out_date, totalPrice, guests, expiresAt, special_requests, promo_code]
-//         );
-
-//         const booking = bookingResult.rows[0];
-
-//         // 6. Insert Contact Info
-//         await client.query(
-//             `INSERT INTO booking_contacts (booking_id, first_name, last_name, email, phone_number)
-//              VALUES ($1, $2, $3, $4, $5)`,
-//             [booking.booking_id, first_name, last_name, email, phone_number]
-//         );
-
-//         await client.query('COMMIT');
-//         res.status(201).json({
-//             booking_id: String(booking.booking_id),
-//             status: booking.booking_status,
-//             total_price: Number(booking.total_amount),
-//             expires_at: booking.expires_at
-//         });
-
-//     } catch (err) {
-//         await client.query('ROLLBACK');
-//         console.error(err);
-//         res.status(500).json({ message: "Server error during booking" });
-//     } finally {
-//         client.release();
-//     }
-// });
 
 
 app.get('/v1/bookings/:booking_id',requireAuth,requireUser,async(req,res)=>{
