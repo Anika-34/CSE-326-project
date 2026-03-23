@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: cse326-backend
+    runtime: docker
+    rootDir: server
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /v1/dummy
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false

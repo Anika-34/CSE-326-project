@@ -1,7 +1,7 @@
 import React, { Fragment, useEffect, useState } from "react";
 
 
-const Test = () => {
+const HomePage = () => {
     const [users, setUsers] = useState([]);
     const apiBaseUrl = process.env.REACT_APP_API_URL || '';
     console.log('API Base URL:', apiBaseUrl);
@@ -22,7 +22,7 @@ const Test = () => {
     
 
     return <Fragment>
-        <h1>Users</h1>
+        <h1>Landing page</h1>
         {users.map (user => (
             <div key={user.user_id}>
                 <p>Name: {user.name}</p>
@@ -33,4 +33,4 @@ const Test = () => {
     </Fragment>
 }
 
-export default Test;
+export default HomePage;

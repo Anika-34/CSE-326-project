@@ -179,10 +179,10 @@ CREATE TABLE surroundings (
 -- dummy data --
 
 INSERT INTO users (name, email, password, role) VALUES 
-('Alice Johnson', 'alice@example.com', 'hashed_password_1', 'REGISTERED'),
-('Bob Smith', 'bob@example.com', 'hashed_password_2', 'REGISTERED'),
-('Charlie Brown', 'charlie@example.com', 'hashed_password_3', 'GUEST'),
-('Admin User', 'admin@example.com', 'hashed_password_4', 'ADMIN');
+('Alice Johnson', 'alice@example.com', '123', 'REGISTERED'),
+('Bob Smith', 'bob@example.com', '123', 'REGISTERED'),
+('Charlie Brown', 'charlie@example.com', '123', 'GUEST'),
+('Admin User', 'admin@example.com', '123', 'ADMIN');
 
 INSERT INTO hotels (name, location, description, image_url) VALUES 
 ('Grand Plaza Hotel', 'New York', 'Luxury hotel in downtown Manhattan', 'https://picsum.photos/400/300');
@@ -255,12 +255,12 @@ INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES
 INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
 (2, 'Spring break special', 20.00, '2026-03-01', '2026-03-31');
 
-INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
-(1, '2026-02-15', '2026-02-18');
+-- INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
+-- (1, '2026-02-15', '2026-02-18');
 
 
-INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
-(2, '2026-02-15', '2026-02-18');
+-- INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
+-- (2, '2026-02-15', '2026-02-18');
 
 INSERT INTO rooms (hotel_id, room_type, price_per_night, capacity) VALUES 
 (1, 'Standard Room', 150.00, 2);
@@ -274,8 +274,8 @@ INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES
 INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
 (3, 'Last minute deal', 10.00, '2026-02-01', '2026-02-14');
 
-INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
-(3, '2026-02-15', '2026-02-18');
+-- INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
+-- (3, '2026-02-15', '2026-02-18');
 
 INSERT INTO hotel_amenities (room_id, amenity_id) VALUES 
 (1, 3);  
@@ -306,8 +306,8 @@ INSERT INTO reviews (user_id, hotel_id, comment, rating) VALUES
 (3, 1, 'Decent stay for the price.', 3),
 (1, 1, 'Amazing ocean views and friendly staff!', 5);
 
-INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
-(4, '2026-02-15', '2026-02-18');
+-- INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
+-- (4, '2026-02-15', '2026-02-18');
 
 INSERT INTO hotel_ratings (hotel_id, cleanliness_score, service_score, location_score, overall_score) VALUES 
 (1, 4.7, 4.6, 4.8, 4.70);
@@ -348,8 +348,8 @@ INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES
 INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
 (5, 'Weekend getaway deal', 25.00, '2026-02-01', '2026-02-28');
 
-INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
-(5, '2026-02-15', '2026-02-18');    
+-- INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
+-- (5, '2026-02-15', '2026-02-18');    
 
 INSERT INTO surroundings (hotel_id, name, description) VALUES 
 (3, 'City Museum', 'Museum showcasing the history and culture of the city'),
@@ -381,8 +381,8 @@ INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES
 INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
 (6, 'Nature escape deal', 20.00, '2026-02-01', '2026-02-28');
 
-INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
-(6, '2026-02-15', '2026-02-18');
+-- INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
+-- (6, '2026-02-15', '2026-02-18');
 
 INSERT INTO surroundings (hotel_id, name, description) VALUES 
 (4, 'Mountain Trailhead', 'Starting point for popular mountain hiking trails'),
@@ -414,8 +414,8 @@ INSERT INTO policies (hotel_id, cancellation_policy, refund_policy) VALUES
 INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
 (7, 'Lakeside getaway deal', 15.00, '2026-02-01', '2026-02-28');
 
-INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
-(7, '2026-02-15', '2026-02-18');
+-- INSERT INTO room_availability (room_id, start_date, end_date) VALUES 
+-- (7, '2026-02-15', '2026-02-18');
 
 INSERT INTO surroundings (hotel_id, name, description) VALUES 
 (5, 'Lakeside Park', 'Park with walking trails and picnic areas along the lake'),
