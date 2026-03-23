@@ -448,7 +448,7 @@ function PaymentPage() {
           <div className="summary-card" ref={bookingInfoRef} style={bookingInfoStyle}>
             <div className="sidebar-header">
               <h3>Booking Info</h3>
-              <a href="#" onClick={(e) => { e.preventDefault(); setIsDetailsOpen(true); }} className="sidebar-link">Details &gt;</a>
+              <button onClick={() => setIsDetailsOpen(true)} className="sidebar-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Details &gt;</button>
             </div>
             <p className="hotel-name">{booking.hotelName}</p>
             <div className="summary-grid">
@@ -488,7 +488,7 @@ function PaymentPage() {
           <div className="summary-card notice-card" ref={noticeCardRef} style={noticeCardStyle}>
             <div className="sidebar-header">
               <h3>Notice</h3>
-              <a href="#" onClick={(e) => { e.preventDefault(); setIsModalOpen(true); }} className="sidebar-link">Show More &gt;</a>
+              <button onClick={() => setIsModalOpen(true)} className="sidebar-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Show More &gt;</button>
             </div>
             <ul>
               <li>
