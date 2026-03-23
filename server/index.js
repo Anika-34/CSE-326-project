@@ -5,7 +5,7 @@ const cors = require('cors');
 const pool = require('./db');
 const jwt = require('jsonwebtoken');
 const Stripe = require('stripe');
-// const cron = require('node-cron');
+const cron = require('node-cron');
 
 const PORT = process.env.PORT || 5000;
 
@@ -1192,7 +1192,7 @@ app.post('/v1/payments/process', async (req, res) => {
 //     }
 // }
 
-const cron = require('node-cron');
+// const cron = require('node-cron');
 
 /**
  * Synchronizes room availability:
