@@ -169,9 +169,6 @@ const ResultSearchBar = ({ searchData }) => {
         }).format(date);
     };
 
-    const checkIn = resolvedCheckIn;
-    const checkOut = resolvedCheckOut;
-    const nights = resolvedNights;
     const guestText = `${counts.rooms} room, ${counts.adults} adults, ${counts.children} children`;
     const isSearchUpdated =
         locationInput.trim() !== String(searchData?.location || '').trim() ||
@@ -304,13 +301,6 @@ const ResultSearchBar = ({ searchData }) => {
 
 // Date Picker Popup Component
 const DatePickerPopup = ({ checkIn, checkOut, onCheckInChange, onCheckOutChange, onClose }) => {
-    const getMinDate = (currentDate) => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const current = new Date(currentDate);
-        return current < today ? today.toISOString().split('T')[0] : currentDate;
-    };
-
     const getMinCheckOut = () => {
         const minDate = new Date(checkIn);
         minDate.setDate(minDate.getDate() + 1);
@@ -356,7 +346,7 @@ const DatePickerPopup = ({ checkIn, checkOut, onCheckInChange, onCheckOutChange,
     );
 };
 
-// Reusable Counter Component
+
 const CounterRow = ({ label, sublabel, count, onUpdate }) => (
     <div className="counter-row">
         <div className="counter-label-group">
