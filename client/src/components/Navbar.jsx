@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import '../styles/Navbar.css';
 import { useNavigate } from 'react-router-dom';
 

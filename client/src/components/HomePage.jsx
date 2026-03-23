@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useState } from "react";
+import React, { Fragment, useEffect, useState, useCallback } from "react";
 
 
 const HomePage = () => {
@@ -6,7 +6,7 @@ const HomePage = () => {
     const apiBaseUrl = process.env.REACT_APP_API_URL || '';
     console.log('API Base URL:', apiBaseUrl);
 
-    const getUsers = async () => {
+    const getUsers = useCallback(async () => {
         try {
             const response = await fetch(`${apiBaseUrl}/v1/dummy`);
             const data = await response.json();
@@ -15,10 +15,11 @@ const HomePage = () => {
         } catch (err) {
             console.error(err.message);
         }
-    }
+    }, [apiBaseUrl]);
+    
     useEffect(() => {
         getUsers();
-    }, []);
+    }, [getUsers]);
     
 
     return <Fragment>
