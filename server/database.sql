@@ -175,7 +175,7 @@ CREATE TABLE room_availability (
     date_available DATE NOT NULL,
     is_available BOOLEAN DEFAULT TRUE,
     UNIQUE(room_id, date_available)
-)
+);
 
 CREATE TABLE surroundings (
     surrounding_id SERIAL PRIMARY KEY,
@@ -220,23 +220,23 @@ INSERT INTO promo_codes (code, description, discount_percentage, start_date, end
 ('SPRING20', 'Spring season offer', 20.00, '2026-03-01', '2026-05-31', TRUE),
 ('EXPIRED5', 'Expired code for testing', 5.00, '2025-01-01', '2025-12-31', FALSE);
 
-INSERT INTO bookings (user_id, room_id, check_in_date, check_out_date, booking_status, total_amount, guests, promo_code) VALUES 
-(1, 1, '2024-02-15', '2024-02-18', 'CONFIRMED', 750.00, 2, 'WELCOME10');
+-- INSERT INTO bookings (user_id, room_id, check_in_date, check_out_date, booking_status, total_amount, guests, promo_code) VALUES 
+-- (1, 1, '2024-02-15', '2024-02-18', 'CONFIRMED', 750.00, 2, 'WELCOME10');
 
-INSERT INTO guest_details (booking_id, guest_name, age, gender) VALUES 
-(1, 'Alice Johnson', 30, 'Female');
+-- INSERT INTO guest_details (booking_id, guest_name, age, gender) VALUES 
+-- (1, 'Alice Johnson', 30, 'Female');
 
-INSERT INTO payments (booking_id, amount, payment_status) VALUES 
-(1, 750.00, 'SUCCESS');
+-- INSERT INTO payments (booking_id, amount, payment_status) VALUES 
+-- (1, 750.00, 'SUCCESS');
 
-INSERT INTO refunds (payment_id, refund_amount, refund_status) VALUES 
-(1, 0.00, 'PROCESSING');
+-- INSERT INTO refunds (payment_id, refund_amount, refund_status) VALUES 
+-- (1, 0.00, 'PROCESSING');
 
 INSERT INTO reviews (user_id, hotel_id, comment, rating) VALUES 
 (1, 1, 'Excellent stay, highly recommend!', 5);
 
-INSERT INTO favourites (user_id, hotel_id) VALUES 
-(1, 1);
+-- INSERT INTO favourites (user_id, hotel_id) VALUES 
+-- (1, 1);
 
 INSERT INTO deals (room_id, description, discount_percentage, start_date, end_date) VALUES 
 (1, 'Early bird discount', 15.00, '2026-01-01', '2026-04-28');
