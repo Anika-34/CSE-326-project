@@ -510,7 +510,7 @@ app.post('/v1/bookings', async (req, res) => {
                 `,
                 [room_id, check_in_date, check_out_date]
             );
-            
+
             const pricePerNight = Number(availCheck.rows[0].price_per_night);
             let discountPercentage = 0;
             if (promo_code) {
@@ -1009,55 +1009,6 @@ app.post('/v1/payments/process', async (req, res) => {
 });
 
 // populating the room availability
-
-// async function syncRoomAvailability() {
-//     const client = await pool.connect();
-//     try {
-//         await client.query('BEGIN');
-
-//         await client.query(`
-//             UPDATE room_availability 
-//             SET is_available = FALSE 
-//             WHERE end_date < CURRENT_DATE;
-//         `);
-
-//         await client.query(`
-//             INSERT INTO room_availability (room_id, start_date, end_date, is_available)
-//             SELECT 
-//                 r.room_id, 
-//                 d.day::date as start_date, 
-//                 d.day::date as end_date, 
-//                 TRUE as is_available
-//             FROM rooms r
-//             CROSS JOIN generate_series(
-//                 CURRENT_DATE, 
-//                 CURRENT_DATE + INTERVAL '15 days', 
-//                 INTERVAL '1 day'
-//             ) AS d(day)
-//             WHERE NOT EXISTS (
-//                 SELECT 1 FROM room_availability ra 
-//                 WHERE ra.room_id = r.room_id 
-//                 AND ra.start_date = d.day::date
-//             );
-//         `);
-
-//         await client.query('COMMIT');
-//         console.log('Room availability synced successfully.');
-//     } catch (err) {
-//         await client.query('ROLLBACK');
-//         console.error('Error syncing room availability:', err);
-//     } finally {
-//         client.release();
-//     }
-// }
-
-// const cron = require('node-cron');
-
-/**
- * Synchronizes room availability:
- * 1. Marks all dates before TODAY as unavailable.
- * 2. Ensures every room has an entry for the next 15 days.
- */
 async function syncRoomAvailability() {
     const client = await pool.connect();
     try {
