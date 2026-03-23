@@ -18,6 +18,7 @@ const getStoredSearchState = () => {
 const ResultSearchBar = ({ searchData }) => {
     const navigate = useNavigate();
     const [showGuestPopup, setShowGuestPopup] = useState(false);
+    const [showDatePopup, setShowDatePopup] = useState(false);
     const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
     const [isLocationFocused, setIsLocationFocused] = useState(false);
     const [locationSuggestions, setLocationSuggestions] = useState([]);
@@ -26,6 +27,15 @@ const ResultSearchBar = ({ searchData }) => {
         return searchData?.location || stored?.location || '';
     });
 
+    const [selectedCheckIn, setSelectedCheckIn] = useState(() => {
+        const stored = getStoredSearchState();
+        return searchData?.checkIn || stored?.checkIn || new Date().toISOString().split('T')[0];
+    });
+
+    const [selectedCheckOut, setSelectedCheckOut] = useState(() => {
+        const stored = getStoredSearchState();
+        return searchData?.checkOut || stored?.checkOut || new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    });
 
     const [counts, setCounts] = useState(() => {
         const stored = getStoredSearchState();
@@ -37,6 +47,7 @@ const ResultSearchBar = ({ searchData }) => {
     });
     
     const popupRef = useRef(null);
+    const dateRef = useRef(null);
     const locationRef = useRef(null);
     const suppressNextSuggestionOpenRef = useRef(false);
     const apiBaseUrl = process.env.REACT_APP_API_URL || '';
@@ -46,6 +57,9 @@ const ResultSearchBar = ({ searchData }) => {
         const handleClickOutside = (event) => {
             if (popupRef.current && !popupRef.current.contains(event.target)) {
                 setShowGuestPopup(false);
+            }
+            if (dateRef.current && !dateRef.current.contains(event.target)) {
+                setShowDatePopup(false);
             }
             if (locationRef.current && !locationRef.current.contains(event.target)) {
                 setIsLocationFocused(false);
@@ -111,9 +125,9 @@ const ResultSearchBar = ({ searchData }) => {
         });
     }, [searchData]);
 
-    const resolvedCheckIn = searchData?.checkIn || getStoredSearchState()?.checkIn || new Date().toISOString().split('T')[0];
-    const resolvedCheckOut = searchData?.checkOut || getStoredSearchState()?.checkOut || new Date(Date.now() + 86400000).toISOString().split('T')[0];
-    const resolvedNights = searchData?.nights || Math.max(1, Math.ceil((new Date(resolvedCheckOut) - new Date(resolvedCheckIn)) / (1000 * 60 * 60 * 24)));
+    const resolvedCheckIn = selectedCheckIn;
+    const resolvedCheckOut = selectedCheckOut;
+    const resolvedNights = Math.max(1, Math.ceil((new Date(resolvedCheckOut) - new Date(resolvedCheckIn)) / (1000 * 60 * 60 * 24)));
 
     const handleUpdateSearch = () => {
         const params = new URLSearchParams(); // Fresh params
@@ -161,6 +175,8 @@ const ResultSearchBar = ({ searchData }) => {
     const guestText = `${counts.rooms} room, ${counts.adults} adults, ${counts.children} children`;
     const isSearchUpdated =
         locationInput.trim() !== String(searchData?.location || '').trim() ||
+        resolvedCheckIn !== String(searchData?.checkIn || '') ||
+        resolvedCheckOut !== String(searchData?.checkOut || '') ||
         counts.rooms !== Number(searchData?.room ?? 1) ||
         counts.adults !== Number(searchData?.adults ?? 2) ||
         counts.children !== Number(searchData?.children ?? 0);
@@ -222,14 +238,24 @@ const ResultSearchBar = ({ searchData }) => {
             <div className="v-divider"></div>
 
             {/* Dates Section */}
-            <div className="search-section dates">
+            <div className="search-section dates" ref={dateRef}>
                 <Calendar size={20} />
-                <div className="date-wrapper">
-                    <span className="date-text">{formatDate(checkIn)}</span>
+                <div className="date-wrapper" onClick={() => setShowDatePopup(!showDatePopup)} style={{ cursor: 'pointer' }}>
+                    <span className="date-text">{formatDate(resolvedCheckIn)}</span>
                     <span className="date-separator">—</span>
-                    <span className="date-text">{formatDate(checkOut)}</span>
+                    <span className="date-text">{formatDate(resolvedCheckOut)}</span>
                 </div>
-                <span className="nights-badge">{nights} night</span>
+                <span className="nights-badge">{resolvedNights} night</span>
+                
+                {showDatePopup && (
+                    <DatePickerPopup
+                        checkIn={resolvedCheckIn}
+                        checkOut={resolvedCheckOut}
+                        onCheckInChange={setSelectedCheckIn}
+                        onCheckOutChange={setSelectedCheckOut}
+                        onClose={() => setShowDatePopup(false)}
+                    />
+                )}
             </div>
 
             <div className="v-divider"></div>
@@ -272,6 +298,60 @@ const ResultSearchBar = ({ searchData }) => {
                 {isSearchUpdated ? <RefreshCw size={20} /> : <Search size={20} />}
                 <span>{isSearchUpdated ? 'Update' : 'Search'}</span>
             </button>
+        </div>
+    );
+};
+
+// Date Picker Popup Component
+const DatePickerPopup = ({ checkIn, checkOut, onCheckInChange, onCheckOutChange, onClose }) => {
+    const getMinDate = (currentDate) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const current = new Date(currentDate);
+        return current < today ? today.toISOString().split('T')[0] : currentDate;
+    };
+
+    const getMinCheckOut = () => {
+        const minDate = new Date(checkIn);
+        minDate.setDate(minDate.getDate() + 1);
+        return minDate.toISOString().split('T')[0];
+    };
+
+    return (
+        <div className="date-picker-popup">
+            <div className="date-picker-content">
+                <h3>Select Dates</h3>
+                <div className="date-inputs">
+                    <div className="date-input-group">
+                        <label>Check-in</label>
+                        <input
+                            type="date"
+                            value={checkIn}
+                            onChange={(e) => {
+                                onCheckInChange(e.target.value);
+                                if (new Date(e.target.value) >= new Date(checkOut)) {
+                                    const nextDay = new Date(e.target.value);
+                                    nextDay.setDate(nextDay.getDate() + 1);
+                                    onCheckOutChange(nextDay.toISOString().split('T')[0]);
+                                }
+                            }}
+                            min={new Date().toISOString().split('T')[0]}
+                        />
+                    </div>
+                    <div className="date-input-group">
+                        <label>Check-out</label>
+                        <input
+                            type="date"
+                            value={checkOut}
+                            onChange={(e) => onCheckOutChange(e.target.value)}
+                            min={getMinCheckOut()}
+                        />
+                    </div>
+                </div>
+                <button className="date-done-btn" onClick={onClose}>
+                    Done
+                </button>
+            </div>
         </div>
     );
 };

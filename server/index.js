@@ -5,7 +5,7 @@ const cors = require('cors');
 const pool = require('./db');
 const jwt = require('jsonwebtoken');
 const Stripe = require('stripe');
-const cron = require('node-cron');
+// const cron = require('node-cron');
 
 const PORT = process.env.PORT || 5000;
 
@@ -189,6 +189,36 @@ app.get('/v1/hotels/search', async (req, res) => {
         const { location, check_in_date, check_out_date } = req.query;
         console.log('Search query params:', req.query);
 
+        // const result = await pool.query(
+        //     `
+        //     SELECT DISTINCT ON (h.hotel_id)
+        //         h.hotel_id,
+        //         h.name,
+        //         h.location,
+        //         h.image_url,
+        //         r.room_type,
+        //         r.price_per_night,
+        //         r.capacity,
+        //         p.cancellation_policy,
+        //         d.discount_percentage,
+        //         d.description AS deal_description
+        //     FROM hotels h
+        //     JOIN rooms r ON h.hotel_id = r.hotel_id
+        //     LEFT JOIN policies p ON h.hotel_id = p.hotel_id
+        //     LEFT JOIN deals d ON r.room_id = d.room_id
+        //     JOIN room_availability ra ON r.room_id = ra.room_id
+        //     WHERE 
+        //         h.location ILIKE '%' || $1 || '%'
+        //         AND ra.start_date <= $2
+        //         AND ra.end_date >= $3
+        //     GROUP BY 
+        //         h.hotel_id, h.name, h.location, h.image_url,
+        //         r.room_type, r.price_per_night, r.capacity,
+        //         p.cancellation_policy, d.discount_percentage, d.description
+        //     ORDER BY h.hotel_id, r.capacity DESC;
+        //     `,
+        //     [location, check_in_date, check_out_date]
+        // );
         const result = await pool.query(
             `
             SELECT DISTINCT ON (h.hotel_id)
@@ -206,19 +236,23 @@ app.get('/v1/hotels/search', async (req, res) => {
             JOIN rooms r ON h.hotel_id = r.hotel_id
             LEFT JOIN policies p ON h.hotel_id = p.hotel_id
             LEFT JOIN deals d ON r.room_id = d.room_id
-            JOIN room_availability ra ON r.room_id = ra.room_id
             WHERE 
                 h.location ILIKE '%' || $1 || '%'
-                AND ra.start_date <= $2
-                AND ra.end_date >= $3
-            GROUP BY 
-                h.hotel_id, h.name, h.location, h.image_url,
-                r.room_type, r.price_per_night, r.capacity,
-                p.cancellation_policy, d.discount_percentage, d.description
+                AND r.room_id IN (
+                    SELECT ra.room_id
+                    FROM room_availability ra
+                    WHERE ra.date_available >= $2  -- Check-in Date
+                    AND ra.date_available < $3   -- Check-out Date (Exclusive)
+                    AND ra.is_available = TRUE
+                    GROUP BY ra.room_id
+                    HAVING COUNT(*) = ($3::date - $2::date) -- Total nights requested
+                )
             ORDER BY h.hotel_id, r.capacity DESC;
             `,
             [location, check_in_date, check_out_date]
         );
+
+        console.log('Hotel search DB result:', result.rows);
 
         const hotelIds = [...new Set(result.rows.map(h => h.hotel_id))];
 
@@ -391,14 +425,22 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
         WHERE hotel_id = $1
         `;
 
+        // const numberOfAvailableRoomsQuery = `
+        // SELECT  COUNT(*) AS available_rooms
+        // FROM rooms r
+        // JOIN room_availability ra ON r.room_id = ra.room_id
+        // WHERE r.hotel_id = $1
+        //     AND ra.start_date <= CURRENT_DATE
+        //     AND ra.end_date >= CURRENT_DATE
+        //     AND ra.is_available = TRUE
+        // `;
         const numberOfAvailableRoomsQuery = `
-        SELECT  COUNT(*) AS available_rooms
-        FROM rooms r
-        JOIN room_availability ra ON r.room_id = ra.room_id
-        WHERE r.hotel_id = $1
-            AND ra.start_date <= CURRENT_DATE
-            AND ra.end_date >= CURRENT_DATE
-            AND ra.is_available = TRUE
+            SELECT COUNT(DISTINCT r.room_id) AS available_rooms
+            FROM rooms r
+            JOIN room_availability ra ON r.room_id = ra.room_id
+            WHERE r.hotel_id = $1
+                AND ra.date_available = CURRENT_DATE
+                AND ra.is_available = TRUE
         `;
 
         const reviewQuery = `
@@ -1109,39 +1151,86 @@ app.post('/v1/payments/process', async (req, res) => {
 
 // populating the room availability
 
+// async function syncRoomAvailability() {
+//     const client = await pool.connect();
+//     try {
+//         await client.query('BEGIN');
+
+//         await client.query(`
+//             UPDATE room_availability 
+//             SET is_available = FALSE 
+//             WHERE end_date < CURRENT_DATE;
+//         `);
+
+//         await client.query(`
+//             INSERT INTO room_availability (room_id, start_date, end_date, is_available)
+//             SELECT 
+//                 r.room_id, 
+//                 d.day::date as start_date, 
+//                 d.day::date as end_date, 
+//                 TRUE as is_available
+//             FROM rooms r
+//             CROSS JOIN generate_series(
+//                 CURRENT_DATE, 
+//                 CURRENT_DATE + INTERVAL '15 days', 
+//                 INTERVAL '1 day'
+//             ) AS d(day)
+//             WHERE NOT EXISTS (
+//                 SELECT 1 FROM room_availability ra 
+//                 WHERE ra.room_id = r.room_id 
+//                 AND ra.start_date = d.day::date
+//             );
+//         `);
+
+//         await client.query('COMMIT');
+//         console.log('Room availability synced successfully.');
+//     } catch (err) {
+//         await client.query('ROLLBACK');
+//         console.error('Error syncing room availability:', err);
+//     } finally {
+//         client.release();
+//     }
+// }
+
+const cron = require('node-cron');
+
+/**
+ * Synchronizes room availability:
+ * 1. Marks all dates before TODAY as unavailable.
+ * 2. Ensures every room has an entry for the next 15 days.
+ */
 async function syncRoomAvailability() {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
+        // Step 1: Mark past dates as unavailable
+        // (Even better: you could DELETE them if you don't need history)
         await client.query(`
             UPDATE room_availability 
             SET is_available = FALSE 
-            WHERE end_date < CURRENT_DATE;
+            WHERE date_available < CURRENT_DATE;
         `);
 
+        // Step 2: Generate rows for the next 15 days for all rooms
+        // The UNIQUE constraint and 'ON CONFLICT DO NOTHING' prevent errors
         await client.query(`
-            INSERT INTO room_availability (room_id, start_date, end_date, is_available)
+            INSERT INTO room_availability (room_id, date_available, is_available)
             SELECT 
                 r.room_id, 
-                d.day::date as start_date, 
-                d.day::date as end_date, 
-                TRUE as is_available
+                d.day::date, 
+                TRUE
             FROM rooms r
             CROSS JOIN generate_series(
                 CURRENT_DATE, 
-                CURRENT_DATE + INTERVAL '15 days', 
+                CURRENT_DATE + INTERVAL '14 days', 
                 INTERVAL '1 day'
             ) AS d(day)
-            WHERE NOT EXISTS (
-                SELECT 1 FROM room_availability ra 
-                WHERE ra.room_id = r.room_id 
-                AND ra.start_date = d.day::date
-            );
+            ON CONFLICT (room_id, date_available) DO NOTHING;
         `);
 
         await client.query('COMMIT');
-        console.log('Room availability synced successfully.');
+        console.log('Room availability synced successfully for 15 days.');
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error syncing room availability:', err);

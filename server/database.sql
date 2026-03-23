@@ -161,13 +161,21 @@ CREATE TABLE deals (
     end_date DATE
 );
 
+-- CREATE TABLE room_availability (
+--     availability_id SERIAL PRIMARY KEY,
+--     room_id INTEGER REFERENCES rooms(room_id),
+--     start_date DATE NOT NULL,
+--     end_date DATE NOT NULL,
+--     is_available BOOLEAN DEFAULT TRUE
+-- );
+
 CREATE TABLE room_availability (
     availability_id SERIAL PRIMARY KEY,
     room_id INTEGER REFERENCES rooms(room_id),
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    is_available BOOLEAN DEFAULT TRUE
-);
+    date_available DATE NOT NULL,
+    is_available BOOLEAN DEFAULT TRUE,
+    UNIQUE(room_id, date_available)
+)
 
 CREATE TABLE surroundings (
     surrounding_id SERIAL PRIMARY KEY,
