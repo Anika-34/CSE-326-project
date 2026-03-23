@@ -931,14 +931,6 @@ app.post('/v1/payments/process', async (req, res) => {
                 [booking_id]
             );
 
-            // await client.query(
-            //     `
-            //     UPDATE room_availability
-            //     SET is_available = TRUE
-            //     WHERE room_id = $1
-            //     `,
-            //     [booking.room_id]
-            // );
             await client.query(
                 `UPDATE room_availability 
                  SET is_available = TRUE 
@@ -1013,17 +1005,12 @@ async function syncRoomAvailability() {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-
-        // Step 1: Mark past dates as unavailable
-        // (Even better: you could DELETE them if you don't need history)
         await client.query(`
             UPDATE room_availability 
             SET is_available = FALSE 
             WHERE date_available < CURRENT_DATE;
         `);
 
-        // Step 2: Generate rows for the next 15 days for all rooms
-        // The UNIQUE constraint and 'ON CONFLICT DO NOTHING' prevent errors
         await client.query(`
             INSERT INTO room_availability (room_id, date_available, is_available)
             SELECT 
