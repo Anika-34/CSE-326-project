@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState , useCallback} from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import '../styles/BookingHistory.css';
@@ -34,7 +34,7 @@ const BookingHistory = () => {
     []
   );
 
-  const loadBookings = async () => {
+  const loadBookings = useCallback(async () => {
     if (!userId) {
       setLoading(false);
       return;
@@ -61,7 +61,7 @@ const BookingHistory = () => {
     } finally {
       setLoading(false);
     }
-  };
+  });
 
   useEffect(() => {
     loadBookings();
