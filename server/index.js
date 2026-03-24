@@ -8,6 +8,7 @@ const Stripe = require('stripe');
 const cron = require('node-cron');
 
 const PORT = process.env.PORT || 5000;
+const AVAILABILITY_WINDOW_DAYS = Math.max(14, Number(process.env.AVAILABILITY_WINDOW_DAYS) || 90);
 
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
     .split(',')
@@ -1147,7 +1148,7 @@ app.post('/v1/payments/process', async (req, res) => {
             await client.query(
                 `UPDATE room_availability 
                  SET is_available = TRUE 
-                 WHERE room_id = $1 AND start_date >= $2 AND start_date < $3`,
+                 WHERE room_id = $1 AND date_available >= $2 AND date_available < $3`,
                 [booking.room_id, booking.check_in_date, booking.check_out_date]
             );
 
@@ -1233,17 +1234,19 @@ async function syncRoomAvailability() {
             FROM rooms r
             CROSS JOIN generate_series(
                 CURRENT_DATE, 
-                CURRENT_DATE + INTERVAL '14 days', 
+                CURRENT_DATE + INTERVAL '59 days', 
                 INTERVAL '1 day'
             ) AS d(day)
             ON CONFLICT (room_id, date_available) DO NOTHING;
         `);
 
         await client.query('COMMIT');
-        console.log('Room availability synced successfully for 15 days.');
+        console.log('Room availability synced successfully for 60 days.');
+        return true;
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error syncing room availability:', err);
+        return false;
     } finally {
         client.release();
     }
@@ -1257,7 +1260,15 @@ cron.schedule('0 0 * * *', () => {
 if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
-        syncRoomAvailability();
+        syncRoomAvailability().then((ok) => {
+            if (!ok) {
+                // Retry shortly after startup in case DB wasn't ready during first attempt.
+                setTimeout(() => {
+                    console.log('Retrying room availability sync after startup failure...');
+                    syncRoomAvailability();
+                }, 15000);
+            }
+        });
     });
 }
 
