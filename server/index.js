@@ -217,24 +217,38 @@ app.get('/v1/hotels/search', async (req, res) => {
         const result = await pool.query(
             `
             WITH available_rooms AS (
-                SELECT ra.room_id
-                FROM room_availability ra
-                WHERE ra.date_available >= $2
-                AND ra.date_available < $3
-                AND ra.is_available = TRUE
-                GROUP BY ra.room_id
-                HAVING COUNT(*) = ($3::date - $2::date)
+                SELECT r.room_id, r.hotel_id, r.price_per_night, r.capacity, r.room_type
+                FROM rooms r
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM room_availability ra
+                    WHERE ra.room_id = r.room_id
+                    AND ra.date_available >= $2
+                    AND ra.date_available < $3
+                    AND ra.is_available = FALSE
+                )
             ),
 
             hotel_summary AS (
                 SELECT 
                     h.hotel_id,
-                    AVG(hr.overall_score) AS rating,
+                    ROUND(AVG(hr.overall_score),1) AS rating,
                     COUNT(rvw.review_id) AS review_count
                 FROM hotels h
                 LEFT JOIN hotel_ratings hr ON h.hotel_id = hr.hotel_id
                 LEFT JOIN reviews rvw ON h.hotel_id = rvw.hotel_id
                 GROUP BY h.hotel_id
+            ),
+
+            best_room AS (
+                SELECT DISTINCT ON (ar.hotel_id)
+                    ar.hotel_id,
+                    ar.room_id,
+                    ar.room_type,
+                    ar.price_per_night,
+                    ar.capacity
+                FROM available_rooms ar
+                ORDER BY ar.hotel_id, ar.price_per_night ASC   -- cheapest room per hotel
             )
 
             SELECT 
@@ -243,75 +257,93 @@ app.get('/v1/hotels/search', async (req, res) => {
                 h.location,
                 h.image_url,
 
-                r.room_type,
-                r.price_per_night,
-                r.capacity,
+                br.room_type,
+                br.price_per_night,
+                br.capacity,
 
                 p.cancellation_policy,
                 d.discount_percentage,
                 d.description AS deal_description,
 
-                ROUND(hs.rating, 1) AS overall_score,
+                hs.rating AS overall_score,
                 hs.review_count
 
             FROM hotels h
-            JOIN rooms r ON h.hotel_id = r.hotel_id
-            JOIN available_rooms ar ON r.room_id = ar.room_id
+            JOIN best_room br ON h.hotel_id = br.hotel_id
 
-            LEFT JOIN policies p ON h.hotel_id = p.hotel_id
-            LEFT JOIN deals d ON r.room_id = d.room_id
+            LEFT JOIN LATERAL (
+                SELECT cancellation_policy
+                FROM policies p
+                WHERE p.hotel_id = h.hotel_id
+                LIMIT 1
+            ) p ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT d.discount_percentage, d.description
+                FROM deals d
+                WHERE d.room_id = br.room_id
+                AND CURRENT_DATE BETWEEN d.start_date AND d.end_date
+                ORDER BY d.discount_percentage DESC
+                LIMIT 1
+            ) d ON TRUE
             LEFT JOIN hotel_summary hs ON h.hotel_id = hs.hotel_id
 
             WHERE h.location ILIKE '%' || $1 || '%'
 
-            ORDER BY h.hotel_id, r.capacity DESC
+            ORDER BY br.price_per_night ASC
             LIMIT 20;
             `,
             [location, check_in_date, check_out_date]
         );
 
-        console.log('Hotel search DB result:', result.rows);
-
-        const hotelIds = [...new Set(result.rows.map(h => h.hotel_id))];
-
-        const reviewCounts = hotelIds.length
-            ? await pool.query(
-                `
-                SELECT hotel_id, COUNT(*)::int AS review_count
-                FROM reviews
-                WHERE hotel_id = ANY($1::int[])
-                GROUP BY hotel_id
-                `,
-                [hotelIds]
-            )
-            : { rows: [] };
-
-
-        const overallScores = hotelIds.length
-            ? await pool.query(
-                `SELECT hr.hotel_id,
-                ROUND(AVG(hr.overall_score), 1) as overall_score
-                FROM hotel_ratings hr
-                WHERE hr.hotel_id = ANY($1::int[])
-                GROUP BY hr.hotel_id
-                `,
-                [hotelIds]
-            )
-            : { rows: [] };
-
-
-        const reviewMap = Object.fromEntries(
-            reviewCounts.rows.map(r => [r.hotel_id, r.review_count])
+        // console.log('Hotel search DB result:', result.rows);
+        console.log(
+            result.rows.map(r => ({
+                hotel: r.name,
+                room: r.room_type,
+                deal: r.deal_description
+            }))
         );
 
-        const ratingMap = Object.fromEntries(
-            overallScores.rows.map(r => [r.hotel_id, r.overall_score])
-        );
+        // const hotelIds = [...new Set(result.rows.map(h => h.hotel_id))];
 
-        result.rows.forEach(hotel => {
-            hotel.review_count = reviewMap[hotel.hotel_id] || 0;
-            hotel.overall_score = ratingMap[hotel.hotel_id] || null;
-        });
+        // const reviewCounts = hotelIds.length
+        //     ? await pool.query(
+        //         `
+        //         SELECT hotel_id, COUNT(*)::int AS review_count
+        //         FROM reviews
+        //         WHERE hotel_id = ANY($1::int[])
+        //         GROUP BY hotel_id
+        //         `,
+        //         [hotelIds]
+        //     )
+        //     : { rows: [] };
+
+
+        // const overallScores = hotelIds.length
+        //     ? await pool.query(
+        //         `SELECT hr.hotel_id,
+        //         ROUND(AVG(hr.overall_score), 1) as overall_score
+        //         FROM hotel_ratings hr
+        //         WHERE hr.hotel_id = ANY($1::int[])
+        //         GROUP BY hr.hotel_id
+        //         `,
+        //         [hotelIds]
+        //     )
+        //     : { rows: [] };
+
+
+        // const reviewMap = Object.fromEntries(
+        //     reviewCounts.rows.map(r => [r.hotel_id, r.review_count])
+        // );
+
+        // const ratingMap = Object.fromEntries(
+        //     overallScores.rows.map(r => [r.hotel_id, r.overall_score])
+        // );
+
+        // result.rows.forEach(hotel => {
+        //     hotel.review_count = reviewMap[hotel.hotel_id] || 0;
+        //     hotel.overall_score = ratingMap[hotel.hotel_id] || null;
+        // });
 
         // console.log('Raw DB result:', result.rows);
         // res.json(result.rows);
