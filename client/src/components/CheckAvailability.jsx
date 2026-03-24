@@ -55,7 +55,7 @@ const CheckAvailability = () => {
     const { hotel_id } = useParams();
     const [hotelDetails, setHotelDetails] = useState(null);
     const [activeTab, setActiveTab] = useState('rooms');
-    const [activeFilter, setActiveFilter] = useState(null);
+    // const [activeFilter, setActiveFilter] = useState(null);
 
     const apiBaseUrl = process.env.REACT_APP_API_URL || '';
 
