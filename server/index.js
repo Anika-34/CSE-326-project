@@ -65,6 +65,30 @@ const requireUser = (req, res, next) => {
     return next();
 };
 
+const parsePolicyDays = (policyText) => {
+    if (!policyText) return null;
+    const match = String(policyText).match(/(\d+)\s*\+?\s*day/i);
+    if (!match) return null;
+    const days = Number(match[1]);
+    const returnVal = Number.isFinite(days) ? days : null;
+    console.log(`returnVal: ${returnVal}`);
+    return returnVal;
+};
+
+const normalizeDate = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    date.setHours(0, 0, 0, 0);
+    return date;
+};
+
+const getDaysUntil = (targetDate) => {
+    const today = normalizeDate(new Date());
+    const target = normalizeDate(targetDate);
+    if (!today || !target) return null;
+    return Math.floor((target - today) / (1000 * 60 * 60 * 24));
+};
+
 // users
 
 // minimal login (plain password match for seed/demo)
@@ -673,6 +697,95 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
 
 
 
+app.get('/v1/bookings', async (req, res) => {
+    try {
+        const userId = Number(req.query.user_id); // debugging
+        console.log(`userid: ${userId}`);
+        if (!Number.isInteger(userId)) {
+            return res.status(400).json({ message: 'user_id is required.' });
+        }
+
+        const result = await pool.query(
+            `
+            SELECT
+                b.booking_id,
+                b.user_id,
+                b.room_id,
+                b.check_in_date,
+                b.check_out_date,
+                b.booking_status,
+                b.total_amount,
+                b.currency,
+                b.guests,
+                b.created_at,
+                b.cancelled_at,
+                h.name AS hotel_name,
+                h.location AS hotel_location,
+                r.room_type,
+                pol.cancellation_policy,
+                pol.refund_policy,
+                pay.payment_status,
+                pay.amount AS payment_amount,
+                ref.refund_status,
+                ref.refund_amount
+            FROM bookings b
+            JOIN rooms r ON b.room_id = r.room_id
+            JOIN hotels h ON r.hotel_id = h.hotel_id
+            LEFT JOIN LATERAL (
+                SELECT p.cancellation_policy, p.refund_policy
+                FROM policies p
+                WHERE p.hotel_id = h.hotel_id
+                ORDER BY p.policy_id DESC
+                LIMIT 1
+            ) pol ON true
+            LEFT JOIN LATERAL (
+                SELECT pmt.payment_id, pmt.payment_status, pmt.amount
+                FROM payments pmt
+                WHERE pmt.booking_id = b.booking_id
+                ORDER BY pmt.payment_date DESC
+                LIMIT 1
+            ) pay ON true
+            LEFT JOIN LATERAL (
+                SELECT rfd.refund_status, rfd.refund_amount
+                FROM refunds rfd
+                WHERE rfd.payment_id = pay.payment_id
+                ORDER BY rfd.processed_at DESC
+                LIMIT 1
+            ) ref ON true
+            WHERE b.user_id = $1
+            ORDER BY b.created_at DESC
+            `,
+            [userId]
+        );
+
+        const bookings = result.rows.map((row) => ({
+            booking_id: String(row.booking_id),
+            room_id: row.room_id,
+            hotel_name: row.hotel_name,
+            location: row.hotel_location,
+            room_type: row.room_type,
+            check_in_date: row.check_in_date,
+            check_out_date: row.check_out_date,
+            guests: row.guests,
+            status: row.booking_status,
+            total_price: Number(row.total_amount),
+            currency: row.currency,
+            created_at: row.created_at,
+            cancelled_at: row.cancelled_at,
+            cancellation_policy: row.cancellation_policy,
+            refund_policy: row.refund_policy,
+            payment_status: row.payment_status,
+            refund_status: row.refund_status,
+            refund_amount: row.refund_amount ? Number(row.refund_amount) : 0
+        }));
+        console.log(bookings);
+        return res.status(200).json(bookings); // debugging
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+
 app.post('/v1/bookings', async (req, res) => {
     console.log('Booking request body:', req.body);
     try{
@@ -845,6 +958,168 @@ app.get('/v1/bookings/:booking_id',requireAuth,requireUser,async(req,res)=>{
         })
     }
 })
+
+app.delete('/v1/bookings/:booking_id', async (req, res) => {
+    const { booking_id } = req.params;
+    const { user_id } = req.body || {};
+
+    console.log(`booking_id: ${booking_id}, user_id: ${user_id}`); // debugging
+
+    if (!booking_id || !user_id) {
+        return res.status(400).json({ message: 'booking_id and user_id are required.' });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const bookingResult = await client.query(
+            `
+            SELECT
+                b.booking_id,
+                b.user_id,
+                b.room_id,
+                b.check_in_date,
+                b.check_out_date,
+                b.booking_status,
+                b.total_amount,
+                b.currency,
+                r.hotel_id
+            FROM bookings b
+            JOIN rooms r ON b.room_id = r.room_id
+            JOIN hotels h ON r.hotel_id = h.hotel_id
+            WHERE b.booking_id = $1
+            FOR UPDATE OF b
+            `,
+            [booking_id]
+        );
+
+        if (bookingResult.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Booking not found' });
+        }
+
+        const booking = bookingResult.rows[0];
+        const policyResult = await client.query(
+            `
+            SELECT cancellation_policy, refund_policy
+            FROM policies
+            WHERE hotel_id = $1
+            ORDER BY policy_id DESC
+            LIMIT 1
+            `,
+            [booking.hotel_id]
+        );
+        const policy = policyResult.rows[0] || {};
+        if (Number(booking.user_id) !== Number(user_id)) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ message: 'Forbidden — user does not own this booking' });
+        }
+
+        if (['CANCELLED', 'REFUNDED', 'EXPIRED'].includes(booking.booking_status)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'Cancellation not allowed due to policy' });
+        }
+
+        const daysUntilCheckIn = getDaysUntil(booking.check_in_date);
+        if (daysUntilCheckIn === null || daysUntilCheckIn < 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'Cancellation not allowed due to policy' });
+        }
+
+        const cancellationDays = parsePolicyDays(policy.cancellation_policy);
+        if (cancellationDays === null || daysUntilCheckIn < cancellationDays) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'Cancellation not allowed due to policy' });
+        }
+
+        const paymentResult = await client.query(
+            `
+            SELECT payment_id, amount, payment_status
+            FROM payments
+            WHERE booking_id = $1
+            ORDER BY payment_date DESC
+            LIMIT 1
+            `,
+            [booking_id]
+        );
+
+        const latestPayment = paymentResult.rows[0];
+        const refundDays = parsePolicyDays(policy.refund_policy);
+        const canRefund =
+            refundDays !== null &&
+            daysUntilCheckIn >= refundDays &&
+            latestPayment &&
+            latestPayment.payment_status === 'SUCCESS';
+
+        console.log(`daysUntilCheckIn: ${daysUntilCheckIn}, refundDays: ${refundDays}`);
+
+        let refundAmount = 0;
+        let refundStatus = 'NOT_ELIGIBLE';
+        let nextStatus = 'CANCELLED';
+
+        if (canRefund) {
+            refundAmount = Number(latestPayment.amount);
+            const refundInsert = await client.query(
+                `
+                INSERT INTO refunds (payment_id, refund_amount, refund_status)
+                VALUES ($1, $2, 'COMPLETED')
+                RETURNING refund_status, refund_amount
+                `,
+                [latestPayment.payment_id, refundAmount]
+            );
+
+            await client.query(
+                `
+                UPDATE payments
+                SET payment_status = 'REFUNDED'
+                WHERE payment_id = $1
+                `,
+                [latestPayment.payment_id]
+            );
+
+            refundStatus = refundInsert.rows[0].refund_status;
+            refundAmount = Number(refundInsert.rows[0].refund_amount);
+            nextStatus = 'REFUNDED';
+        }
+
+        await client.query(
+            `
+            UPDATE bookings
+            SET booking_status = $2, cancelled_at = NOW()
+            WHERE booking_id = $1
+            `,
+            [booking_id, nextStatus]
+        );
+
+        await client.query(
+            `
+            UPDATE room_availability
+            SET is_available = TRUE
+            WHERE room_id = $1
+            AND date_available >= $2
+            AND date_available < $3
+            `,
+            [booking.room_id, booking.check_in_date, booking.check_out_date]
+        );
+
+        await client.query('COMMIT');
+
+        return res.status(200).json({
+            booking_id: String(booking_id),
+            status: nextStatus,
+            refund_amount: refundAmount,
+            refund_status: refundStatus,
+            cancelled_at: new Date().toISOString()
+        });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error(err);
+        return res.status(500).json({ message: 'Server error' });
+    } finally {
+        client.release();
+    }
+});
 
 app.get('/v1/admin/bookings',requireAuth,requireAdmin,async(req,res)=>{
     try {

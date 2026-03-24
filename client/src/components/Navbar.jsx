@@ -47,7 +47,7 @@ const Navbar = () => {
                 {/* <div className="nav-item">List Your Property</div> */}
                 {/* <div className="nav-item"><Globe size={18} /> | USD</div> */}
                 <div className="nav-item">Customer Support</div>
-                <div className="nav-item">My Bookings</div>
+                <div className="nav-item" onClick={() => navigate('/bookings')}>My Bookings</div>
                 <div className="user-profile">
                     <div className="avatar">
                         <User size={20} />

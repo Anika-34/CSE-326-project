@@ -10,6 +10,7 @@ import PaymentPage from './components/PaymentPage';
 import BookingPage from './components/BookingPage';
 import SignIn from './components/SignIn';
 import HomePage from './components/HomePage';
+import BookingHistory from './components/BookingHistory';
 
 const App = () => {
     return <div className = "app-wrapper">
@@ -19,6 +20,7 @@ const App = () => {
                 <Route path="/hotels/search" element={<HotelList />} />
                 <Route path="/hotels/details/:hotel_id" element={<CheckAvailability />} />
                 <Route path="/bookings/new" element={<BookingPage />} />
+                <Route path="/bookings" element={<BookingHistory />} />
                 <Route path="/payment" element={<PaymentPage />} /> 
                 <Route path="/login" element={<SignIn />} /> 
             </Routes>
