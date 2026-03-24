@@ -127,24 +127,17 @@ const CheckAvailability = () => {
         ? Math.min(...rooms.map(r => Number(r.price_per_night)))
         : null;
 
-    // TODO: Add real filters based on room properties (e.g. instant confirmation, free cancellation, etc.)
     // const roomFilters = [
-    //     { label: `Instant confirmation (${rooms.length})`, id: 'instant' },
-    //     { label: `Free cancellation (${rooms.length})`, id: 'free_cancel', icon: '✔' },
-    //     { label: `1 single bed (${rooms.length})`, id: 'single' },
-    //     { label: `Prepay Online (${rooms.length})`, id: 'prepay' },
+    //     { label: `All Rooms (${rooms.length})`, id: 'all' },
+    //     {
+    //         label: `Suites (${rooms.filter(r => r.room_type.includes('Suite')).length})`,
+    //         id: 'suite'
+    //     },
+    //     {
+    //         label: `Under $200 (${rooms.filter(r => Number(r.price_per_night) < 200).length})`,
+    //         id: 'cheap'
+    //     },
     // ];
-    const roomFilters = [
-        { label: `All Rooms (${rooms.length})`, id: 'all' },
-        {
-            label: `Suites (${rooms.filter(r => r.room_type.includes('Suite')).length})`,
-            id: 'suite'
-        },
-        {
-            label: `Under $200 (${rooms.filter(r => Number(r.price_per_night) < 200).length})`,
-            id: 'cheap'
-        },
-    ];
 
 
     const handleSelectRooms = () => {
@@ -382,8 +375,7 @@ const CheckAvailability = () => {
                 {activeTab === 'rooms' && (
                     <div id="rooms-section" className="ca-rooms-section">
 
-                        {/* Room Filter Chips */}
-                        <div className="ca-filter-row">
+                        {/* <div className="ca-filter-row">
                             {roomFilters.map((f) => (
                                 <button
                                     key={f.id}
@@ -394,7 +386,7 @@ const CheckAvailability = () => {
                                     {f.label}
                                 </button>
                             ))}
-                        </div>
+                        </div> */}
 
                         {/* Room Cards */}
                         {rooms.length > 0 ? (

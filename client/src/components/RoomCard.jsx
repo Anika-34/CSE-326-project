@@ -126,7 +126,7 @@ const RoomCard = ({ room, amenities, onReserve }) => {
             <span style={styles.dealLabel}>First Booking Deal</span>
             <span style={styles.discountBadge}>{discountPct}% off</span>
           </div>
-{/* TODO count ta fix kora baki */}
+          {/* TODO count ta fix kora baki */}
           <div style={styles.lastRooms}>Our last 2!</div>
 
           <div style={styles.priceRow}>
