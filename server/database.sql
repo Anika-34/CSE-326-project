@@ -1,5 +1,5 @@
---CREATE DATABASE tripv1;
--- \c tripv1
+CREATE DATABASE tripv1;
+\c tripv1
 --If manually created in postgres, then no need of this line:  CREATE DATABASE tripv1;
 --Try to keep this name consistent
 CREATE TYPE status_type AS ENUM ('INITIATED', 'PAYMENT_PENDING', 'CONFIRMED', 'CANCELLED', 'REFUNDED', 'EXPIRED');
@@ -183,6 +183,23 @@ CREATE TABLE surroundings (
     name VARCHAR(255) NOT NULL,
     description TEXT
 );
+
+
+CREATE INDEX idx_rooms_hotel_id ON rooms(hotel_id);
+CREATE INDEX idx_hotel_images_hotel_id ON hotel_images(hotel_id);
+CREATE INDEX idx_hotel_ratings_hotel_id ON hotel_ratings(hotel_id);
+CREATE INDEX idx_hotel_amenities_room_id ON hotel_amenities(room_id);
+CREATE INDEX idx_hotel_amenities_amenity_id ON hotel_amenities(amenity_id);
+
+CREATE INDEX idx_bookings_user_id ON bookings(user_id);
+CREATE INDEX idx_bookings_room_id ON bookings(room_id);
+
+CREATE INDEX idx_reviews_hotel_id ON reviews(hotel_id);
+CREATE INDEX idx_reviews_user_id ON reviews(user_id);
+
+CREATE INDEX idx_room_availability_room_date 
+ON room_availability(room_id, date_available);
+
 
 -- dummy data --
 

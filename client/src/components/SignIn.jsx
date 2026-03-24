@@ -88,8 +88,7 @@ export default function SignIn({ onClose }) {
                 // console.log('Token stored in localStorage:', localStorage.getItem("authToken"));
                 // console.log('User ID stored in localStorage:', localStorage.getItem("userId"));
                 alert("Login successful!");
-                // TODO: Redirect to hotel search page or dashboard
-                navigate("/home");
+                navigate("/");
             }
 
             if (onClose) {

@@ -5,6 +5,7 @@ import "../components/ResultSearchBar"
 import ResultSearchBar from '../components/ResultSearchBar';
 import Navbar from './Navbar';
 import { useSearchParams } from 'react-router-dom';
+import '../styles/HotelList.css';
 
 const SEARCH_STATE_KEY = 'trip.searchState';
 
@@ -85,7 +86,17 @@ const HotelList = () => {
         getHotels();
     }, [baseUrl, location, checkInDate, checkOutDate]);
 
-    if (loading) return <div className="loader">Searching for best deals...</div>;
+    if (loading) {
+        return (
+            <Fragment>
+                <Navbar />
+                <div className="hotel-list-loading" role="status" aria-live="polite">
+                    <div className="hotel-list-spinner" aria-hidden="true"></div>
+                    <p className="hotel-list-loading-text">Searching for best deals...</p>
+                </div>
+            </Fragment>
+        );
+    }
 
     return <Fragment>
         <Navbar />

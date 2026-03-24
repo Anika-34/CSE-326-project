@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { MapPin, Calendar, User, Search, RefreshCw, X, Plus, Minus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/ResultSearchBar.css';
@@ -150,7 +150,7 @@ const ResultSearchBar = ({ searchData }) => {
                 children: counts.children
             })
         );
-
+        
         navigate(`/hotels/search?${params.toString()}`);
     };
 
@@ -178,14 +178,8 @@ const ResultSearchBar = ({ searchData }) => {
         counts.adults !== Number(searchData?.adults ?? 2) ||
         counts.children !== Number(searchData?.children ?? 0);
 
-    return (
+    return <Fragment>
         <div className="search-bar-container">
-            {/* Location Section */}
-            {/* <div className="search-section location">
-                <MapPin size={20} className="icon-blue" />
-                <span className="search-text">{location}</span>
-                <X size={16} className="clear-icon" />
-            </div> */}
             <div className="search-section location" ref={locationRef}>
                 <MapPin size={20} className="icon-blue" />
                 <input 
@@ -199,7 +193,7 @@ const ResultSearchBar = ({ searchData }) => {
                             setShowLocationSuggestions(true);
                         }
                     }}
-                    placeholder="Where are you going?"
+                    placeholder={locationInput ? '' : 'Where are you going?'}
                     style={{
                         border:0,
                         outline: 'none',
@@ -296,7 +290,7 @@ const ResultSearchBar = ({ searchData }) => {
                 <span>{isSearchUpdated ? 'Update' : 'Search'}</span>
             </button>
         </div>
-    );
+    </Fragment>
 };
 
 // Date Picker Popup Component

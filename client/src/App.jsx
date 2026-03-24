@@ -15,12 +15,12 @@ const App = () => {
     return <div className = "app-wrapper">
         <Router>
             <Routes>
-                <Route path="/home" element={<HomePage/>} />
+                <Route path="/" element={<HomePage/>} />
                 <Route path="/hotels/search" element={<HotelList />} />
                 <Route path="/hotels/details/:hotel_id" element={<CheckAvailability />} />
                 <Route path="/bookings/new" element={<BookingPage />} />
                 <Route path="/payment" element={<PaymentPage />} /> 
-                <Route path="/" element={<SignIn />} /> 
+                <Route path="/login" element={<SignIn />} /> 
             </Routes>
         </Router>
     </div>;

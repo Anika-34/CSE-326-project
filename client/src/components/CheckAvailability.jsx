@@ -110,12 +110,19 @@ const CheckAvailability = () => {
         ));
     };
 
-    const { hotel, amenities, rooms, deals, reviewCount } = hotelDetails;
+    // const { hotel, amenities, rooms, deals, reviewCount } = hotelDetails;
+    const { hotel, rooms = [], deals = [], reviewCount } = hotelDetails;
+    // const amenities = hotelDetails.amenities || [];
     // ameniety map without duplicates
-    const roomAmenities = amenities.filter((a, index, self) =>
-        index === self.findIndex((am) => am.name === a.name)
-    );
-
+    // const roomAmenities = amenities.filter((a, index, self) =>
+    //     index === self.findIndex((am) => am.name === a.name)
+    // );
+    const ratings = hotelDetails.ratings || {};
+    const roomAmenities = rooms
+        .flatMap(r => r.amenities || [])
+        .filter((a, index, self) =>
+            index === self.findIndex(am => am.name === a.name)
+        );
     const lowestPrice = rooms.length > 0
         ? Math.min(...rooms.map(r => Number(r.price_per_night)))
         : null;
@@ -183,7 +190,7 @@ const CheckAvailability = () => {
                                 {/* {'★★'.split('').map((s, i) => (
                                     <span key={i} className="ca-star">{s}</span>
                                 ))} */}
-                                {renderStars(hotel.overall_rating)}
+                                {renderStars(hotelDetails.ratings?.overall)}
                                 {/* <span className="ca-opened-badge">Opened in 2025</span> */}
                             </div>
                             <h1 className="ca-hotel-name">{hotel.name}</h1>
@@ -270,7 +277,7 @@ const CheckAvailability = () => {
                                 <span className="ca-rating-max">/10</span>
                             </div> */}
                             <div className="ca-rating-score">
-                                {hotelDetails.ratings.overall_score}
+                                {hotelDetails.ratings.overall}
                                 <span className="ca-rating-max">/5</span> {/* Matching your 5-point scale in JSON */}
                             </div>
                             <p className="ca-rating-desc">Read location, friendly front desk staff will check and then they can store your luggage</p>
@@ -395,7 +402,7 @@ const CheckAvailability = () => {
                                 <RoomCard
                                     key={room.room_id}
                                     room={room}
-                                    amenities={amenities}
+                                    amenities={room.amenities || []}
                                     onReserve={handleReserve}
                                 />
                             ))
@@ -450,10 +457,10 @@ const CheckAvailability = () => {
                             {/* Left Side: Rating Summary */}
                             <div className="ca-ratings-summary-sidebar">
                                 <div className="ca-summary-header">
-                                    <span className="ca-big-score">{hotelDetails.ratings?.overall_score || '0.0'}</span>
+                                    <span className="ca-big-score">{hotelDetails.ratings?.overall || '0.0'}</span>
                                     <div>
                                         {(() => {
-                                            const overallScore = hotelDetails.ratings?.overall_score || 0;
+                                            const overallScore = hotelDetails.ratings?.overall || 0;
                                             const rLabel = getRatingLabel(overallScore, 5);
                                             return (
                                                 <div
@@ -470,19 +477,19 @@ const CheckAvailability = () => {
 
                                 <div className="ca-category-bars">
                                     {[
-                                        { label: 'Cleanliness', key: 'cleanliness_score' },
-                                        { label: 'Service', key: 'service_score' },
-                                        { label: 'Location', key: 'location_score' }
+                                        { label: 'Cleanliness', key: 'cleanliness' },
+                                        { label: 'Service', key: 'service' },
+                                        { label: 'Location', key: 'location' }
                                     ].map((item) => (
                                         <div key={item.key} className="ca-bar-row">
                                             <div className="ca-bar-info">
                                                 <span>{item.label}</span>
-                                                <span>{hotelDetails.ratings?.[item.key]}</span>
+                                                <span>{ratings[item.key] ?? 0}</span>
                                             </div>
                                             <div className="ca-bar-bg">
                                                 <div
                                                     className="ca-bar-fill"
-                                                    style={{ width: `${(hotelDetails.ratings?.[item.key] / 5) * 100}%` }}
+                                                    style={{ width: `${((ratings[item.key]?? 0) / 5) * 100}%` }}
                                                 ></div>
                                             </div>
                                         </div>

@@ -191,33 +191,56 @@ app.get('/v1/hotels/search', async (req, res) => {
 
         const result = await pool.query(
             `
-            SELECT DISTINCT ON (h.hotel_id)
+            WITH available_rooms AS (
+                SELECT ra.room_id
+                FROM room_availability ra
+                WHERE ra.date_available >= $2
+                AND ra.date_available < $3
+                AND ra.is_available = TRUE
+                GROUP BY ra.room_id
+                HAVING COUNT(*) = ($3::date - $2::date)
+            ),
+
+            hotel_summary AS (
+                SELECT 
+                    h.hotel_id,
+                    AVG(hr.overall_score) AS rating,
+                    COUNT(rvw.review_id) AS review_count
+                FROM hotels h
+                LEFT JOIN hotel_ratings hr ON h.hotel_id = hr.hotel_id
+                LEFT JOIN reviews rvw ON h.hotel_id = rvw.hotel_id
+                GROUP BY h.hotel_id
+            )
+
+            SELECT 
                 h.hotel_id,
                 h.name,
                 h.location,
                 h.image_url,
+
                 r.room_type,
                 r.price_per_night,
                 r.capacity,
+
                 p.cancellation_policy,
                 d.discount_percentage,
-                d.description AS deal_description
+                d.description AS deal_description,
+
+                ROUND(hs.rating, 1) AS overall_score,
+                hs.review_count
+
             FROM hotels h
             JOIN rooms r ON h.hotel_id = r.hotel_id
+            JOIN available_rooms ar ON r.room_id = ar.room_id
+
             LEFT JOIN policies p ON h.hotel_id = p.hotel_id
             LEFT JOIN deals d ON r.room_id = d.room_id
-            WHERE 
-                h.location ILIKE '%' || $1 || '%'
-                AND r.room_id IN (
-                    SELECT ra.room_id
-                    FROM room_availability ra
-                    WHERE ra.date_available >= $2  -- Check-in Date
-                    AND ra.date_available < $3   -- Check-out Date (Exclusive)
-                    AND ra.is_available = TRUE
-                    GROUP BY ra.room_id
-                    HAVING COUNT(*) = ($3::date - $2::date) -- Total nights requested
-                )
-            ORDER BY h.hotel_id, r.capacity DESC;
+            LEFT JOIN hotel_summary hs ON h.hotel_id = hs.hotel_id
+
+            WHERE h.location ILIKE '%' || $1 || '%'
+
+            ORDER BY h.hotel_id, r.capacity DESC
+            LIMIT 20;
             `,
             [location, check_in_date, check_out_date]
         );
@@ -251,14 +274,18 @@ app.get('/v1/hotels/search', async (req, res) => {
             )
             : { rows: [] };
 
-        result.rows.forEach(hotel => {
-            const reviewCount = reviewCounts.rows.find(rc => rc.hotel_id === hotel.hotel_id);
-            hotel.review_count = reviewCount ? reviewCount.review_count : 0;
-        });
+
+        const reviewMap = Object.fromEntries(
+            reviewCounts.rows.map(r => [r.hotel_id, r.review_count])
+        );
+
+        const ratingMap = Object.fromEntries(
+            overallScores.rows.map(r => [r.hotel_id, r.overall_score])
+        );
 
         result.rows.forEach(hotel => {
-            const overallScore = overallScores.rows.find(os => os.hotel_id === hotel.hotel_id);
-            hotel.overall_score = overallScore ? overallScore.overall_score : null;
+            hotel.review_count = reviewMap[hotel.hotel_id] || 0;
+            hotel.overall_score = ratingMap[hotel.hotel_id] || null;
         });
 
         // console.log('Raw DB result:', result.rows);
@@ -319,138 +346,321 @@ app.get('/v1/hotels/search', async (req, res) => {
 
 
 // check availability
+// app.get('/v1/hotels/details/:hotelId', async (req, res) => {
+//     try {
+//         const { hotelId } = req.params;
+//         const parsedHotelId = Number(hotelId);
+
+//         console.log('Hotel ID:', parsedHotelId);
+//         if (!Number.isInteger(parsedHotelId) || parsedHotelId <= 0) {
+//             return res.status(400).json({ error: 'Invalid hotelId' });
+//         }
+
+//         const hotelQuery = `
+//           SELECT 
+//             h.hotel_id,
+//             h.name,
+//             h.location,
+//             h.description,
+//             h.image_url,
+//             hr.cleanliness_score,
+//             hr.service_score,
+//             hr.location_score,
+//             hr.overall_score,
+//             p.cancellation_policy,
+//             p.refund_policy
+//           FROM hotels h
+//           LEFT JOIN hotel_ratings hr ON h.hotel_id = hr.hotel_id
+//           LEFT JOIN policies p ON h.hotel_id = p.hotel_id
+//           WHERE h.hotel_id = $1
+//           GROUP BY 
+//             h.hotel_id, hr.cleanliness_score, hr.service_score, hr.location_score,
+//             hr.overall_score, p.cancellation_policy, p.refund_policy
+//         `;
+
+//         const amenitiesQuery = `
+//         SELECT 
+//             ha.room_id,
+//             a.amenity_id,
+//             a.name,
+//             a.category,
+//             a.is_chargeable
+//         FROM hotel_amenities ha
+//         JOIN amenities a ON a.amenity_id = ha.amenity_id
+//         WHERE ha.room_id IN (
+//             SELECT r.room_id
+//             FROM rooms r
+//             WHERE r.hotel_id = $1
+//         )
+//         `;
+
+//         const roomsQuery = `
+//         SELECT 
+//             r.room_id,
+//             r.room_type,
+//             r.price_per_night,
+//             r.capacity
+//         FROM rooms r
+//         WHERE r.hotel_id = $1
+//         `;
+
+//         const dealsQuery = `
+//         SELECT 
+//             d.room_id,
+//             d.description AS deal_description,
+//             d.discount_percentage
+//         FROM deals d
+//         JOIN rooms r ON d.room_id = r.room_id
+//         WHERE r.hotel_id = $1
+//             AND CURRENT_DATE BETWEEN d.start_date AND d.end_date
+//         `;
+
+//         const surroundingsQuery = `
+//         SELECT 
+//             name, description
+//         FROM surroundings
+//         WHERE hotel_id = $1
+//         `;
+
+//         const numberOfAvailableRoomsQuery = `
+//             SELECT COUNT(DISTINCT r.room_id) AS available_rooms
+//             FROM rooms r
+//             JOIN room_availability ra ON r.room_id = ra.room_id
+//             WHERE r.hotel_id = $1
+//                 AND ra.date_available = CURRENT_DATE
+//                 AND ra.is_available = TRUE
+//         `;
+
+//         const reviewQuery = `
+//         SELECT 
+//             r.review_id,
+//             r.rating,
+//             r.comment,
+//             u.name AS reviewer_name,
+//             r.review_date
+//         FROM reviews r
+//         JOIN users u ON r.user_id = u.user_id
+//         WHERE r.hotel_id = $1
+//         ORDER BY r.review_date DESC
+//         `;
+
+//         const ratingQuery = `
+//         SELECT 
+//             ROUND(AVG(hr.cleanliness_score), 1) as cleanliness_score,
+//             ROUND(AVG(hr.service_score), 1) as service_score,
+//             ROUND(AVG(hr.location_score), 1) as location_score,
+//             ROUND(AVG(hr.overall_score), 1) as overall_score
+//         FROM hotel_ratings hr
+//         WHERE hr.hotel_id = $1;
+//         `;
+
+//         // console.log(await pool.query(ratingQuery, [hotelId]))
+
+
+//         const [hotel, amenities, rooms, deals, surroundings, availableRoomsResult, reviewsResult, ratingResult] = await Promise.all([
+//             pool.query(hotelQuery, [parsedHotelId]),
+//             pool.query(amenitiesQuery, [parsedHotelId]),
+//             pool.query(roomsQuery, [parsedHotelId]),
+//             pool.query(dealsQuery, [parsedHotelId]),
+//             pool.query(surroundingsQuery, [parsedHotelId]),
+//             pool.query(numberOfAvailableRoomsQuery, [parsedHotelId]),
+//             pool.query(reviewQuery, [parsedHotelId]),
+//             pool.query(ratingQuery, [parsedHotelId])
+//         ]);
+
+//         res.json({
+//             hotel: hotel.rows[0],
+//             amenities: amenities.rows,
+//             rooms: rooms.rows,
+//             deals: deals.rows,
+//             surroundings: surroundings.rows,
+//             availableRooms: availableRoomsResult.rowCount > 0 ? availableRoomsResult.rows[0].available_rooms : 0,
+//             reviews: reviewsResult.rowCount > 0 ? reviewsResult.rows : [],
+//             reviewCount: reviewsResult.rowCount,
+//             ratings: ratingResult.rowCount > 0 ? ratingResult.rows[0] : null
+//         });
+
+//     } catch (err) {
+//         console.error(err.message);
+//         res.status(500).send("Server error");
+//     }
+// });
+
+
 app.get('/v1/hotels/details/:hotelId', async (req, res) => {
     try {
-        const { hotelId } = req.params;
-        const parsedHotelId = Number(hotelId);
+        const parsedHotelId = Number(req.params.hotelId);
 
-        console.log('Hotel ID:', parsedHotelId);
         if (!Number.isInteger(parsedHotelId) || parsedHotelId <= 0) {
             return res.status(400).json({ error: 'Invalid hotelId' });
         }
 
-        const hotelQuery = `
-          SELECT 
-            h.hotel_id,
-            h.name,
-            h.location,
-            h.description,
-            h.image_url,
-            hr.cleanliness_score,
-            hr.service_score,
-            hr.location_score,
-            hr.overall_score,
-            p.cancellation_policy,
-            p.refund_policy
-          FROM hotels h
-          LEFT JOIN hotel_ratings hr ON h.hotel_id = hr.hotel_id
-          LEFT JOIN policies p ON h.hotel_id = p.hotel_id
-          WHERE h.hotel_id = $1
-          GROUP BY 
-            h.hotel_id, hr.cleanliness_score, hr.service_score, hr.location_score,
-            hr.overall_score, p.cancellation_policy, p.refund_policy
-        `;
+        const result = await pool.query(
+            `
+            WITH hotel_base AS (
+                SELECT 
+                    h.hotel_id,
+                    h.name,
+                    h.location,
+                    h.description,
+                    h.image_url,
+                    p.cancellation_policy,
+                    p.refund_policy
+                FROM hotels h
+                LEFT JOIN policies p ON h.hotel_id = p.hotel_id
+                WHERE h.hotel_id = $1
+            ),
 
-        const amenitiesQuery = `
-        SELECT 
-            ha.room_id,
-            a.amenity_id,
-            a.name,
-            a.category,
-            a.is_chargeable
-        FROM hotel_amenities ha
-        JOIN amenities a ON a.amenity_id = ha.amenity_id
-        WHERE ha.room_id IN (
-            SELECT r.room_id
-            FROM rooms r
-            WHERE r.hotel_id = $1
-        )
-        `;
+            rating_data AS (
+                SELECT 
+                    hotel_id,
+                    ROUND(AVG(cleanliness_score),1) AS cleanliness_score,
+                    ROUND(AVG(service_score),1) AS service_score,
+                    ROUND(AVG(location_score),1) AS location_score,
+                    ROUND(AVG(overall_score),1) AS overall_score
+                FROM hotel_ratings
+                WHERE hotel_id = $1
+                GROUP BY hotel_id
+            ),
 
-        const roomsQuery = `
-        SELECT 
-            r.room_id,
-            r.room_type,
-            r.price_per_night,
-            r.capacity
-        FROM rooms r
-        WHERE r.hotel_id = $1
-        `;
+            review_data AS (
+                SELECT 
+                    r.hotel_id,
+                    COUNT(*) AS review_count,
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'review_id', r.review_id,
+                            'rating', r.rating,
+                            'comment', r.comment,
+                            'reviewer_name', u.name,
+                            'review_date', r.review_date
+                        )
+                        ORDER BY r.review_date DESC
+                    ) AS reviews
+                FROM reviews r
+                JOIN users u ON r.user_id = u.user_id
+                WHERE r.hotel_id = $1
+                GROUP BY r.hotel_id
+            ),
 
-        const dealsQuery = `
-        SELECT 
-            d.room_id,
-            d.description AS deal_description,
-            d.discount_percentage
-        FROM deals d
-        JOIN rooms r ON d.room_id = r.room_id
-        WHERE r.hotel_id = $1
-            AND CURRENT_DATE BETWEEN d.start_date AND d.end_date
-        `;
+            rooms_data AS (
+                SELECT 
+                    r.hotel_id,
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'room_id', r.room_id,
+                            'room_type', r.room_type,
+                            'price_per_night', r.price_per_night,
+                            'capacity', r.capacity,
+                            'amenities', (
+                                SELECT JSON_AGG(
+                                    JSON_BUILD_OBJECT(
+                                        'amenity_id', a.amenity_id,
+                                        'name', a.name,
+                                        'category', a.category,
+                                        'is_chargeable', a.is_chargeable
+                                    )
+                                )
+                                FROM hotel_amenities ha
+                                JOIN amenities a ON a.amenity_id = ha.amenity_id
+                                WHERE ha.room_id = r.room_id
+                            ),
+                            'deals', (
+                                SELECT JSON_AGG(
+                                    JSON_BUILD_OBJECT(
+                                        'description', d.description,
+                                        'discount_percentage', d.discount_percentage
+                                    )
+                                )
+                                FROM deals d
+                                WHERE d.room_id = r.room_id
+                                AND CURRENT_DATE BETWEEN d.start_date AND d.end_date
+                            )
+                        )
+                    ) AS rooms
+                FROM rooms r
+                WHERE r.hotel_id = $1
+                GROUP BY r.hotel_id
+            ),
 
-        const surroundingsQuery = `
-        SELECT 
-            name, description
-        FROM surroundings
-        WHERE hotel_id = $1
-        `;
+            surroundings_data AS (
+                SELECT 
+                    hotel_id,
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'name', name,
+                            'description', description
+                        )
+                    ) AS surroundings
+                FROM surroundings
+                WHERE hotel_id = $1
+                GROUP BY hotel_id
+            ),
 
-        const numberOfAvailableRoomsQuery = `
-            SELECT COUNT(DISTINCT r.room_id) AS available_rooms
-            FROM rooms r
-            JOIN room_availability ra ON r.room_id = ra.room_id
-            WHERE r.hotel_id = $1
-                AND ra.date_available = CURRENT_DATE
-                AND ra.is_available = TRUE
-        `;
+            availability_data AS (
+                SELECT 
+                    r.hotel_id,
+                    COUNT(*) AS available_rooms
+                FROM rooms r
+                WHERE r.hotel_id = $1
+                AND EXISTS (
+                    SELECT 1
+                    FROM room_availability ra
+                    WHERE ra.room_id = r.room_id
+                    AND ra.date_available = CURRENT_DATE
+                    AND ra.is_available = TRUE
+                )
+                GROUP BY r.hotel_id
+            )
 
-        const reviewQuery = `
-        SELECT 
-            r.review_id,
-            r.rating,
-            r.comment,
-            u.name AS reviewer_name,
-            r.review_date
-        FROM reviews r
-        JOIN users u ON r.user_id = u.user_id
-        WHERE r.hotel_id = $1
-        ORDER BY r.review_date DESC
-        `;
+            SELECT 
+                hb.*,
+                rd.cleanliness_score,
+                rd.service_score,
+                rd.location_score,
+                rd.overall_score,
 
-        const ratingQuery = `
-        SELECT 
-            ROUND(AVG(hr.cleanliness_score), 1) as cleanliness_score,
-            ROUND(AVG(hr.service_score), 1) as service_score,
-            ROUND(AVG(hr.location_score), 1) as location_score,
-            ROUND(AVG(hr.overall_score), 1) as overall_score
-        FROM hotel_ratings hr
-        WHERE hr.hotel_id = $1;
-        `;
+                rv.review_count,
+                rv.reviews,
 
-        // console.log(await pool.query(ratingQuery, [hotelId]))
+                rm.rooms,
+                sd.surroundings,
+                ad.available_rooms
 
+            FROM hotel_base hb
+            LEFT JOIN rating_data rd ON hb.hotel_id = rd.hotel_id
+            LEFT JOIN review_data rv ON hb.hotel_id = rv.hotel_id
+            LEFT JOIN rooms_data rm ON hb.hotel_id = rm.hotel_id
+            LEFT JOIN surroundings_data sd ON hb.hotel_id = sd.hotel_id
+            LEFT JOIN availability_data ad ON hb.hotel_id = ad.hotel_id;
+            `, [parsedHotelId]);
 
-        const [hotel, amenities, rooms, deals, surroundings, availableRoomsResult, reviewsResult, ratingResult] = await Promise.all([
-            pool.query(hotelQuery, [parsedHotelId]),
-            pool.query(amenitiesQuery, [parsedHotelId]),
-            pool.query(roomsQuery, [parsedHotelId]),
-            pool.query(dealsQuery, [parsedHotelId]),
-            pool.query(surroundingsQuery, [parsedHotelId]),
-            pool.query(numberOfAvailableRoomsQuery, [parsedHotelId]),
-            pool.query(reviewQuery, [parsedHotelId]),
-            pool.query(ratingQuery, [parsedHotelId])
-        ]);
+        const data = result.rows[0];
 
         res.json({
-            hotel: hotel.rows[0],
-            amenities: amenities.rows,
-            rooms: rooms.rows,
-            deals: deals.rows,
-            surroundings: surroundings.rows,
-            availableRooms: availableRoomsResult.rowCount > 0 ? availableRoomsResult.rows[0].available_rooms : 0,
-            reviews: reviewsResult.rowCount > 0 ? reviewsResult.rows : [],
-            reviewCount: reviewsResult.rowCount,
-            ratings: ratingResult.rowCount > 0 ? ratingResult.rows[0] : null
+            hotel: {
+                hotel_id: data.hotel_id,
+                name: data.name,
+                location: data.location,
+                description: data.description,
+                image_url: data.image_url,
+                cancellation_policy: data.cancellation_policy,
+                refund_policy: data.refund_policy
+            },
+
+            ratings: {
+                cleanliness: data.cleanliness_score,
+                service: data.service_score,
+                location: data.location_score,
+                overall: data.overall_score
+            },
+
+            reviewCount: data.review_count || 0,
+            reviews: data.reviews || [],
+
+            rooms: data.rooms || [],
+            surroundings: data.surroundings || [],
+            availableRooms: data.available_rooms || 0
         });
 
     } catch (err) {
@@ -458,6 +668,9 @@ app.get('/v1/hotels/details/:hotelId', async (req, res) => {
         res.status(500).send("Server error");
     }
 });
+
+
+
 
 app.post('/v1/bookings', async (req, res) => {
     console.log('Booking request body:', req.body);

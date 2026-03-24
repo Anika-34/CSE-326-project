@@ -25,20 +25,26 @@ const HotelCard = ({ hotel, searchDetails }) => {
   //   const baseUrl = process.env.REACT_APP_API_URL || '';
   const navigate = useNavigate();
   const checkAvailability = (hotel_id) => {
-    const payload = {
-      location: location,
-      checkInDate: searchDetails.checkInDate,
-      checkOutDate: searchDetails.checkOutDate,
-      nights: searchDetails.nights,
-      room: searchDetails.room,
-      adults: searchDetails.adults,
-      children: searchDetails.children
-    };
-    console.log('search details in HotelCard:', payload);
-    navigate(`/hotels/details/${hotel_id}`,
-      {
-        state: payload
-      });
+    if (localStorage.getItem('authToken')) {
+      const payload = {
+        location: location,
+        checkInDate: searchDetails.checkInDate,
+        checkOutDate: searchDetails.checkOutDate,
+        nights: searchDetails.nights,
+        room: searchDetails.room,
+        adults: searchDetails.adults,
+        children: searchDetails.children
+      };
+      console.log('search details in HotelCard:', payload);
+      navigate(`/hotels/details/${hotel_id}`,
+        {
+          state: payload
+        });
+    }
+    else {
+      alert('Please login to check availability');
+      navigate('/login');
+    }
   }
 
   return (

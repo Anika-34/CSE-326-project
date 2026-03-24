@@ -1,4 +1,6 @@
 import React, { Fragment, useEffect, useState, useCallback } from "react";
+import ResultSearchBar from "./ResultSearchBar";
+import Navbar from "./Navbar";
 
 
 const HomePage = () => {
@@ -16,21 +18,31 @@ const HomePage = () => {
             console.error(err.message);
         }
     }, [apiBaseUrl]);
-    
+
     useEffect(() => {
         getUsers();
     }, [getUsers]);
-    
+
 
     return <Fragment>
-        <h1>Landing page</h1>
-        {users.map (user => (
-            <div key={user.user_id}>
-                <p>Name: {user.name}</p>
-                <p>Email: {user.email}</p>
+        <Navbar/>
+        <div className="container-fluid px-4"
+            style={{ alignItems: 'center', gap: '20px', maxWidth: '1200px', margin: '0 auto' }}
+        >
+            <ResultSearchBar />
+            <div>
+                <h1>homepage</h1>
+                <h3>dummy data shown, remove these</h3>
+                {users.map(user => (
+                    <div key={user.user_id}>
+                        <p>Name: {user.name}</p>
+                        <p>Email: {user.email}</p>
+                    </div>
+                ))}
+                <button onClick={() => window.location.href = '/hotels/search/?location=New%20York&checkIn=2026-02-15&checkOut=2026-02-18&room=1&adults=0&children=1'}>Go to Hotel Search</button>
             </div>
-        ))}
-        <button onClick={()=>window.location.href = '/hotels/search/?location=New%20York&checkIn=2026-02-15&checkOut=2026-02-18&room=1&adults=0&children=1'}>Go to Hotel Search</button>
+        </div>
+
     </Fragment>
 }
 

@@ -358,17 +358,15 @@
     top: calc(100% + 12px);
     left: 0;
     z-index: 2100;
-    animation: slideDown 0.2s ease-out;
+  animation: fadeIn 0.2s ease-out;
 }
 
-@keyframes slideDown {
+@keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(-10px);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
     }
 }
 
