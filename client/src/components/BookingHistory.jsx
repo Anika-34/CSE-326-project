@@ -61,11 +61,11 @@ const BookingHistory = () => {
     } finally {
       setLoading(false);
     }
-  });
+  }, [apiBaseUrl, userId]);
 
   useEffect(() => {
     loadBookings();
-  }, [userId]);
+  }, [loadBookings]);
 
   const handleCancel = async (bookingId) => {
     if (!userId) {
