@@ -26,7 +26,8 @@ app.use(cors({
 }));
 app.use(express.json());
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 
 // routes
 
@@ -1300,15 +1301,19 @@ const mapTestCardToPaymentMethod = (cardNumber) => {
 };
 
 const verifyPaymentWithGateway = async ({ paymentMethod, cardNumber, amount, cardholderName, expiryDate, cvv }) => {
-    if (!process.env.STRIPE_SECRET_KEY) {
-        throw new Error('STRIPE_SECRET_KEY not configured in environment');
-    }
-
     if (paymentMethod !== 'card') {
         return {
             isVerified: true,
             providerStatus: 'succeeded',
             message: `${paymentMethod} payment authorized.`,
+        };
+    }
+
+    if (!stripe) {
+        return {
+            isVerified: false,
+            providerStatus: 'misconfigured',
+            message: 'Card payments are unavailable. STRIPE_SECRET_KEY is not configured on the server.',
         };
     }
 
