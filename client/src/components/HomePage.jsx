@@ -7,7 +7,9 @@ import {
     Waves,
     Coffee,
     BriefcaseMedical,
+    User,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import ResultSearchBar from "./ResultSearchBar";
 import "../styles/HomePage.css";
 
@@ -34,7 +36,7 @@ const recentlyViewedHotels = [
         location: "Bali, Indonesia",
         score: "9.3",
         rating: "Very Good",
-        image: "https://images.unsplash.com/photo-1501117716987-c8e2a3f0f0b0?auto=format&fit=crop&w=900&q=80",
+        image: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=900&q=80",
     },
     {
         id: 4,
@@ -133,6 +135,9 @@ const italianHotels = [
 ];
 
 const HomePage = () => {
+    const navigate = useNavigate();
+    const isLoggedIn = Boolean(localStorage.getItem("authToken") || localStorage.getItem("userId"));
+
     return (
         <main className="home-v2">
             <section className="hero-banner">
@@ -142,7 +147,18 @@ const HomePage = () => {
                     </div>
                     <div className="topbar-right">
                         <button className="ghost-chip">BDT | English</button>
-                        <button className="primary-chip">Sign in</button>
+                        {isLoggedIn ? (
+                            <button
+                                className="profile-chip"
+                                type="button"
+                                aria-label="Open profile"
+                                title="Profile"
+                            >
+                                <User size={20} />
+                            </button>
+                        ) : (
+                            <button className="primary-chip" onClick={() => navigate('/login')}>Sign in</button>
+                        )}
                     </div>
                 </header>
 
@@ -195,7 +211,7 @@ const HomePage = () => {
                                     </div>
                                 </div>
                                 <div className="price-book-row">
-                                    <p>From <b>$350</b> / night</p>
+                                    <p>From <b>$1350</b> / night</p>
                                     <button type="button">Book</button>
                                 </div>
                             </div>

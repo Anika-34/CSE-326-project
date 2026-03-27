@@ -64,6 +64,19 @@
   background: #2f66f3;
 }
 
+.profile-chip {
+  border: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #2f66f3;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
 .hero-glass-card {
   max-width: 1320px;
   margin: 110px auto 0;
