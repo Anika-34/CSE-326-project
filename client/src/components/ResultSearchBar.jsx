@@ -287,7 +287,7 @@ const ResultSearchBar = ({ searchData }) => {
             <button className="search-button"
                 onClick={handleUpdateSearch}>
                 {isSearchUpdated ? <RefreshCw size={20} /> : <Search size={20} />}
-                <span>{isSearchUpdated ? 'Update' : 'Search'}</span>
+                <span>Search</span>
             </button>
         </div>
     </Fragment>

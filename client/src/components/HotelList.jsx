@@ -63,7 +63,6 @@ const HotelList = () => {
                 const response = await fetch(
                     `${baseUrl}/v1/hotels/search?location=${encodeURIComponent(location)}&check_in_date=${encodeURIComponent(checkInDate)}&check_out_date=${encodeURIComponent(checkOutDate)}`
                 );
-
                 const contentType = response.headers.get('content-type') || '';
                 const body = contentType.includes('application/json')
                     ? await response.json()
@@ -74,7 +73,6 @@ const HotelList = () => {
                         typeof body === 'string' ? body : body?.error || `HTTP ${response.status}`
                     );
                 }
-                console.log('API response:', body);
                 setHotels(body);
             } catch (err) {
                 console.error('getHotels error:', err.message);
