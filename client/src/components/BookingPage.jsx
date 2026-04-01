@@ -90,6 +90,9 @@ const BookingPage = () => {
         : await response.text();
 
       if (!response.ok) {
+        if (response.status === 409) {
+          throw new Error('Room not available for the selected dates. Please choose another room.');
+        }
         const message = typeof body === 'string' ? body : body?.message || body?.error || `HTTP ${response.status}`;
         throw new Error(message);
       }

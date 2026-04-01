@@ -843,14 +843,17 @@ app.post('/v1/bookings', async (req, res) => {
                 FROM room_availability ra
                 JOIN rooms r ON r.room_id = ra.room_id
                 WHERE ra.room_id = $1
-                LIMIT 1
+                  AND ra.is_available = TRUE
+                  AND ra.start_date <= $2
+                  AND ra.end_date >= $3
+                FOR UPDATE
                 `,
-                [room_id]
+                [room_id, check_in_date, check_out_date]
             );
-            // if (availCheck.rowCount === 0) {
-            //     await client.query('ROLLBACK');
-            //     return res.status(409).json({ message: "Room not available for booking" });
-            // }
+            if (availCheck.rowCount === 0) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({ message: "Room not available for booking" });
+            }
             console.log(check_in_date,check_out_date)
             // await client.query(
             //     `
