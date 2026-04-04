@@ -7,6 +7,7 @@ import ResultSearchBar from './ResultSearchBar';
 import '../styles/CheckAvailability.css';
 import { useRef } from 'react';
 import { getRatingLabel } from '../services/ratingUtils';
+import { apiFetch } from '../services/apiFetch';
 
 const SEARCH_STATE_KEY = 'trip.searchState';
 
@@ -83,7 +84,7 @@ const CheckAvailability = () => {
     useEffect(() => {
         const getAvailability = async () => {
             try {
-                const res = await fetch(`${apiBaseUrl}/v1/hotels/details/${hotel_id}`);
+                const res = await apiFetch(`${apiBaseUrl}/v1/hotels/details/${hotel_id}`);
                 const data = await res.json();
                 console.log('Hotel details response:', data);
                 setHotelDetails(data);

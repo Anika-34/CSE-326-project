@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState , useCallback} from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import '../styles/BookingHistory.css';
+import { USER_ID_KEY } from '../services/authStorage';
+import { apiFetch } from '../services/apiFetch';
 
 const STATUS_META = {
   INITIATED: { label: 'Initiated', tone: 'initiated' },
@@ -22,7 +24,7 @@ const formatDate = (value) => {
 const BookingHistory = () => {
   const navigate = useNavigate();
   const apiBaseUrl = process.env.REACT_APP_API_URL || '';
-  const userId = localStorage.getItem('userId');
+  const userId = localStorage.getItem(USER_ID_KEY);
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,7 @@ const BookingHistory = () => {
     setErrorMessage('');
 
     try {
-      const response = await fetch(`${apiBaseUrl}/v1/bookings?user_id=${encodeURIComponent(userId)}`);
+      const response = await apiFetch(`${apiBaseUrl}/v1/bookings?user_id=${encodeURIComponent(userId)}`);
       const contentType = response.headers.get('content-type') || '';
       const body = contentType.includes('application/json')
         ? await response.json()
@@ -80,7 +82,7 @@ const BookingHistory = () => {
     setErrorMessage('');
 
     try {
-      const response = await fetch(`${apiBaseUrl}/v1/bookings/${bookingId}`, {
+      const response = await apiFetch(`${apiBaseUrl}/v1/bookings/${bookingId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: Number(userId) }),
@@ -239,6 +241,12 @@ const BookingHistory = () => {
                       <p className="booking-history-card__price">
                         {booking.currency || 'USD'} {Number(booking.total_price || 0).toFixed(2)}
                       </p>
+                      {['INITIATED', 'PAYMENT_PENDING'].includes(booking.status) && (
+                        <p className="booking-history-card__refund">
+                          Retries used: {Number(booking.retry_count || 0)} / 3
+                          {' '}({Number(booking.retries_left || 0)} left)
+                        </p>
+                      )}
                       {booking.refund_status && (
                         <p className="booking-history-card__refund">
                           Refund: {booking.refund_status}

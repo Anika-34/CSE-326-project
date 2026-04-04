@@ -3,6 +3,7 @@ import { Heart, MapPin, Users, Bed, ChevronRight } from 'lucide-react';
 import '../styles/HotelCard.css';
 import { useNavigate } from 'react-router-dom';
 import { getRatingLabel } from '../services/ratingUtils';
+import { AUTH_TOKEN_KEY } from '../services/authStorage';
 
 
 const HotelCard = ({ hotel, searchDetails }) => {
@@ -25,7 +26,7 @@ const HotelCard = ({ hotel, searchDetails }) => {
   //   const baseUrl = process.env.REACT_APP_API_URL || '';
   const navigate = useNavigate();
   const checkAvailability = (hotel_id) => {
-    if (localStorage.getItem('authToken')) {
+    if (localStorage.getItem(AUTH_TOKEN_KEY)) {
       const payload = {
         location: location,
         checkInDate: searchDetails.checkInDate,

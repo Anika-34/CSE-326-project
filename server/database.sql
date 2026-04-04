@@ -93,12 +93,16 @@ CREATE TABLE bookings (
     currency VARCHAR(8) DEFAULT 'USD',
     guests INTEGER NOT NULL,
     expires_at TIMESTAMP,
+    retry_count INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     cancelled_at TIMESTAMP,
     special_requests TEXT,
     promo_code VARCHAR(64),
     FOREIGN KEY (promo_code) REFERENCES promo_codes(code)
 );
+
+-- ALTER TABLE bookings
+-- ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE booking_contacts (
     contact_id SERIAL PRIMARY KEY,

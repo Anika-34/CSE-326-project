@@ -7,10 +7,10 @@ import {
     Waves,
     Coffee,
     BriefcaseMedical,
-    User,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ResultSearchBar from "./ResultSearchBar";
+import { AUTH_TOKEN_KEY, USER_ID_KEY, clearBrowserAuthState } from "../services/authStorage";
 import "../styles/HomePage.css";
 
 const recentlyViewedHotels = [
@@ -136,7 +136,13 @@ const italianHotels = [
 
 const HomePage = () => {
     const navigate = useNavigate();
-    const isLoggedIn = Boolean(localStorage.getItem("authToken") || localStorage.getItem("userId"));
+    const isLoggedIn = Boolean(localStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem(USER_ID_KEY));
+
+    const handleSignOut = () => {
+        clearBrowserAuthState();
+        // navigate("/login");
+        window.location.href = '/';
+    };
 
     return (
         <main className="home-v2">
@@ -146,15 +152,16 @@ const HomePage = () => {
                         Trip<span>.</span>com
                     </div>
                     <div className="topbar-right">
-                        <button className="ghost-chip">BDT | English</button>
+                        {/* <button className="ghost-chip">BDT | English</button> */}
                         {isLoggedIn ? (
                             <button
-                                className="profile-chip"
+                                className="signout-chip"
                                 type="button"
-                                aria-label="Open profile"
-                                title="Profile"
+                                aria-label="Sign out"
+                                title="Sign out"
+                                onClick={handleSignOut}
                             >
-                                <User size={20} />
+                                Sign out
                             </button>
                         ) : (
                             <button className="primary-chip" onClick={() => navigate('/login')}>Sign in</button>
@@ -165,7 +172,7 @@ const HomePage = () => {
                 <div className="hero-glass-card">
                     <h4>Every check-in is a new beginning</h4>
                     <div className="hero-badges">
-                        <span>We price match</span>
+                        {/* <span>We price match</span> */}
                         <span>Hotel booking guarantee</span>
                         <span>Hotel stay guarantee</span>
                     </div>
@@ -195,7 +202,7 @@ const HomePage = () => {
                                 </button>
                             </div>
                             <div className="card-body-v2">
-                                <h3>{hotel.name}</h3>
+                                <h5>{hotel.name}</h5>
                                 <p className="location-row-v2"><MapPin size={16} /> {hotel.location}</p>
                                 <div className="amenities-row">
                                     <Wifi size={16} />

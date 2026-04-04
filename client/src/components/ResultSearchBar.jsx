@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { MapPin, Calendar, User, Search, RefreshCw, X, Plus, Minus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/ResultSearchBar.css';
+import { apiFetch } from '../services/apiFetch';
 
 const SEARCH_STATE_KEY = 'trip.searchState';
 
@@ -80,8 +81,10 @@ const ResultSearchBar = ({ searchData }) => {
 
         const timer = setTimeout(async () => {
             try {
-                const res = await fetch(
-                    `${apiBaseUrl}/v1/hotels/location-suggestions?query=${encodeURIComponent(query)}`
+                const res = await apiFetch(
+                    `${apiBaseUrl}/v1/hotels/location-suggestions?query=${encodeURIComponent(query)}`,
+                    undefined,
+                    { handleUnauthorized: false }
                 );
                 if (!res.ok) {
                     setLocationSuggestions([]);

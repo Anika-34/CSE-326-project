@@ -6,9 +6,19 @@ const pool = require('./db');
 const jwt = require('jsonwebtoken');
 const Stripe = require('stripe');
 const cron = require('node-cron');
-
+const { parseISO, differenceInCalendarDays } = require('date-fns');
 const PORT = process.env.PORT || 5000;
 const AVAILABILITY_WINDOW_DAYS = Math.max(14, Number(process.env.AVAILABILITY_WINDOW_DAYS) || 90);
+const MAX_BOOKING_RETRIES = 3;
+
+// const ensureBookingRetrySchema = async () => {
+//     await pool.query(`
+//         ALTER TABLE bookings
+//         ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 0
+//     `);
+// };
+
+// const bookingRetrySchemaReady = ensureBookingRetrySchema();
 
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
     .split(',')
@@ -747,6 +757,7 @@ app.get('/v1/bookings', async (req, res) => {
                 b.check_in_date,
                 b.check_out_date,
                 b.booking_status,
+                b.retry_count,
                 b.total_amount,
                 b.currency,
                 b.guests,
@@ -801,6 +812,8 @@ app.get('/v1/bookings', async (req, res) => {
             check_out_date: row.check_out_date,
             guests: row.guests,
             status: row.booking_status,
+            retry_count: Number(row.retry_count || 0),
+            retries_left: Math.max(0, MAX_BOOKING_RETRIES - Number(row.retry_count || 0)),
             total_price: Number(row.total_amount),
             currency: row.currency,
             created_at: row.created_at,
@@ -825,31 +838,134 @@ app.post('/v1/bookings', async (req, res) => {
         console.log('Received booking request:', req.body);
         const{user_id, room_id,check_in_date,check_out_date,guests,first_name,last_name,email,phone_number,promo_code,special_requests} = req.body
 
+        // try {
+        //     await bookingRetrySchemaReady;
+        // } catch (schemaErr) {
+        //     console.error('Failed to ensure booking retry schema:', schemaErr);
+        //     return res.status(500).json({ message: 'Server configuration error' });
+        // }
+
         if (!room_id || !check_in_date || !check_out_date || !guests || !first_name || !last_name || !email || !phone_number) {
             return res.status(400).json({ message: "Missing required fields" });
         }
-        const checkIn = new Date(check_in_date);
-        const checkOut = new Date(check_out_date);
-        const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+        // const checkIn = new Date(check_in_date);
+        // const checkOut = new Date(check_out_date);
+        const checkIn = parseISO(check_in_date);
+        const checkOut = parseISO(check_out_date);
+
+        // const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+        const nights = differenceInCalendarDays(checkOut, checkIn);
+
         if (!Number.isFinite(nights) || nights <= 0) {
             return res.status(400).json({ message: "Invalid check-in/check-out dates" });
         }
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
-            const availCheck = await client.query(
+
+            const existingBookingResult = await client.query(
                 `
-                SELECT r.price_per_night
-                FROM room_availability ra
-                JOIN rooms r ON r.room_id = ra.room_id
-                WHERE ra.room_id = $1
-                  AND ra.is_available = TRUE
-                  AND ra.start_date <= $2
-                  AND ra.end_date >= $3
+                SELECT booking_id, booking_status, total_amount, currency, expires_at, retry_count
+                FROM bookings
+                WHERE user_id = $1
+                  AND room_id = $2
+                  AND check_in_date = $3
+                  AND check_out_date = $4
+                  AND booking_status IN ('INITIATED', 'PAYMENT_PENDING', 'CONFIRMED')
+                ORDER BY created_at DESC
+                LIMIT 1
                 FOR UPDATE
                 `,
-                [room_id, check_in_date, check_out_date]
+                [user_id, room_id, check_in_date, check_out_date]
             );
+
+            if (existingBookingResult.rowCount > 0) {
+                const existing = existingBookingResult.rows[0];
+                const isExpiredHold =
+                    ['INITIATED', 'PAYMENT_PENDING'].includes(existing.booking_status) &&
+                    existing.expires_at &&
+                    new Date(existing.expires_at) < new Date();
+
+                if (isExpiredHold) {
+                    await client.query(
+                        `
+                        UPDATE bookings
+                        SET booking_status = 'EXPIRED'
+                        WHERE booking_id = $1
+                        `,
+                        [existing.booking_id]
+                    );
+
+                    await client.query(
+                        `
+                        UPDATE room_availability
+                        SET is_available = TRUE
+                        WHERE room_id = $1
+                          AND date_available >= $2
+                          AND date_available < $3
+                        `,
+                        [room_id, check_in_date, check_out_date]
+                    );
+                } else {
+                    const isRetryEligibleStatus = ['INITIATED', 'PAYMENT_PENDING'].includes(existing.booking_status);
+                    const usedRetries = Number(existing.retry_count || 0);
+
+                    if (isRetryEligibleStatus && usedRetries >= MAX_BOOKING_RETRIES) {
+                        await client.query('ROLLBACK');
+                        return res.status(429).json({
+                            message: `Retry limit reached. Maximum ${MAX_BOOKING_RETRIES} retries allowed for this booking.`
+                        });
+                    }
+
+                    let updatedRetries = usedRetries;
+                    if (isRetryEligibleStatus) {
+                        const retryUpdate = await client.query(
+                            `
+                            UPDATE bookings
+                            SET retry_count = retry_count + 1
+                            WHERE booking_id = $1
+                            RETURNING retry_count
+                            `,
+                            [existing.booking_id]
+                        );
+                        updatedRetries = Number(retryUpdate.rows[0].retry_count || 0);
+                    }
+
+                    await client.query('COMMIT');
+                    return res.status(200).json({
+                        booking_id: String(existing.booking_id),
+                        status: existing.booking_status,
+                        total_price: Number(existing.total_amount),
+                        currency: existing.currency,
+                        expires_at: existing.expires_at,
+                        message: 'Existing booking reused for retry.',
+                        retries_used: isRetryEligibleStatus ? updatedRetries : 0,
+                        retries_left: isRetryEligibleStatus ? Math.max(0, MAX_BOOKING_RETRIES - updatedRetries) : MAX_BOOKING_RETRIES
+                    });
+                }
+            }
+
+            const availCheck = await client.query(
+                `
+                WITH locked_availability AS (
+                        SELECT ra.room_id, ra.is_available
+                        FROM room_availability ra
+                        WHERE ra.room_id = $1
+                            AND ra.date_available >= $2
+                            AND ra.date_available < $3
+                        FOR UPDATE
+                )
+                SELECT r.price_per_night
+                FROM rooms r
+                JOIN locked_availability la ON la.room_id = r.room_id
+                WHERE r.room_id = $1
+                GROUP BY r.room_id, r.price_per_night
+                HAVING COUNT(*) = $4 AND 
+                BOOL_AND(la.is_available = TRUE)
+            `,
+            [room_id, check_in_date, check_out_date, nights]
+            );
+            
             if (availCheck.rowCount === 0) {
                 await client.query('ROLLBACK');
                 return res.status(409).json({ message: "Room not available for booking" });
@@ -900,11 +1016,11 @@ app.post('/v1/bookings', async (req, res) => {
                 INSERT INTO bookings (
                     user_id, room_id, check_in_date, check_out_date,
                     booking_status, total_amount, currency, guests,
-                    expires_at, special_requests, promo_code
+                    expires_at, special_requests, promo_code, retry_count
                 ) VALUES (
                     $1, $2, $3, $4,
                     'INITIATED', $5, 'USD', $6,
-                    $7, $8, $9
+                    $7, $8, $9, 0
                 )
                 RETURNING booking_id, booking_status, total_amount, currency, expires_at
                 `,

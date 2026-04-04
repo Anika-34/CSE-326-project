@@ -6,6 +6,7 @@ import ResultSearchBar from '../components/ResultSearchBar';
 import Navbar from './Navbar';
 import { useSearchParams } from 'react-router-dom';
 import '../styles/HotelList.css';
+import { apiFetch } from '../services/apiFetch';
 
 const SEARCH_STATE_KEY = 'trip.searchState';
 
@@ -17,7 +18,7 @@ const SEARCH_STATE_KEY = 'trip.searchState';
 const HotelList = () => {
     const [searchParams] = useSearchParams();
     console.log('Search params:', Object.fromEntries(searchParams.entries()));
-    const location = searchParams.get('location') || "Where are you going?";
+    const location = searchParams.get('location');
     const checkInDate = searchParams.get('checkIn') || 
     new Date().toISOString().split('T')[0]
     const checkOutDate = searchParams.get('checkOut') || new Date(Date.now() + 86400000).toISOString().split('T')[0]
@@ -60,7 +61,7 @@ const HotelList = () => {
         const getHotels = async () => {
             setLoading(true);
             try {
-                const response = await fetch(
+                const response = await apiFetch(
                     `${baseUrl}/v1/hotels/search?location=${encodeURIComponent(location)}&check_in_date=${encodeURIComponent(checkInDate)}&check_out_date=${encodeURIComponent(checkOutDate)}`
                 );
                 const contentType = response.headers.get('content-type') || '';

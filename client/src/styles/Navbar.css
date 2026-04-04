@@ -56,6 +56,12 @@
   align-items: center;
   gap: 6px;
   cursor: pointer;
+  font-size: 15px;
+  font-family: "TripFont";
+}
+
+.nav-item:hover {
+  color: #3264ff;
 }
 
 .user-profile {
@@ -87,4 +93,37 @@
   height: 2px;
   background-color: #333;
   margin: 3px 0;
+}
+
+.btn-logout {
+  background: #3264ff;
+  border: 1px solid #3264ff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: "TripFont";
+}
+
+
+.btn-logout:hover {
+  background: #2751b1;
+}
+
+.btn-login {
+  background: #3264ff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: "TripFont";
+}
+
+.btn-login:hover {
+  background: #254ec7;
 }

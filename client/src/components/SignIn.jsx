@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "../styles/SignIn.css";
 import { useNavigate } from "react-router-dom";
+import { AUTH_FLASH_MESSAGE_KEY, AUTH_TOKEN_KEY, USER_ID_KEY } from "../services/authStorage";
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -39,6 +40,14 @@ export default function SignIn({ onClose }) {
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const flashMessage = sessionStorage.getItem(AUTH_FLASH_MESSAGE_KEY);
+        if (flashMessage) {
+            setErrorMessage(flashMessage);
+            sessionStorage.removeItem(AUTH_FLASH_MESSAGE_KEY);
+        }
+    }, []);
 
     const handleEmailContinue = () => {
         const trimmedEmail = email.trim();
@@ -83,8 +92,8 @@ export default function SignIn({ onClose }) {
             }
 
             if (data?.token) {
-                localStorage.setItem("authToken", data.token);
-                localStorage.setItem("userId", data.user_id);
+                localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+                localStorage.setItem(USER_ID_KEY, data.user_id);
                 // console.log('Token stored in localStorage:', localStorage.getItem("authToken"));
                 // console.log('User ID stored in localStorage:', localStorage.getItem("userId"));
                 alert("Login successful!");

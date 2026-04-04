@@ -11,6 +11,7 @@ import {
   PayPalIcon,
   GooglePayIcon,
 } from './PaymentIcons';
+import { apiFetch } from '../services/apiFetch';
 
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
@@ -73,7 +74,7 @@ function PaymentPage() {
 
   useEffect(() => {
     if (!hotel || !room || !checkInDate || !checkOutDate) {
-      navigate('/hotels/search');
+      navigate('/');
     }
   }, [hotel, room, checkInDate, checkOutDate, navigate]);
 
@@ -270,7 +271,7 @@ function PaymentPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${apiBaseUrl}/v1/payments/process`, {
+      const response = await apiFetch(`${apiBaseUrl}/v1/payments/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

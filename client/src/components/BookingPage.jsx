@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import '../styles/BookingPage.css';
+import { USER_ID_KEY } from '../services/authStorage';
+import { apiFetch } from '../services/apiFetch';
 
 const formatDate = (value) => {
   if (!value) return '';
@@ -66,11 +68,11 @@ const BookingPage = () => {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${apiBaseUrl}/v1/bookings`, {
+      const response = await apiFetch(`${apiBaseUrl}/v1/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: localStorage.getItem('userId'),
+          user_id: localStorage.getItem(USER_ID_KEY),
           room_id: room.room_id,
           check_in_date: checkInDate,
           check_out_date: checkOutDate,
